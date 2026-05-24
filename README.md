@@ -7,6 +7,10 @@
 
 Claude Code 万能生图 Skill — 让 Claude 自动选用 Mermaid / PlantUML / AI 生图三种引擎之一生成图片。
 
+## 效果预览
+
+<img width="1106" height="551" alt="universal-image-skill 在 Claude Code 中的效果" src="https://github.com/user-attachments/assets/1c382a26-7fe7-4fbe-8887-483ab344c804" />
+
 ---
 
 ## 目录
