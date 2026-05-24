@@ -4,7 +4,7 @@
   "description": "Claude Code 万能生图 Skill：Mermaid / PlantUML / AI 生图，一键安装",
   "type": "module",
   "bin": {
-    "universal-image-skill": "./bin/cli.mjs"
+    "universal-image-skill": "bin/cli.mjs"
   },
   "files": [
     "bin/",
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/openx123/universal-image-skill"
+    "url": "git+https://github.com/openx123/universal-image-skill.git"
   },
   "keywords": [
     "claude-code",

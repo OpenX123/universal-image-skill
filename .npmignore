@@ -9,7 +9,10 @@ tests/
 output/
 *.log
 
-# 环境变量
+# 环境变量（用 ** 确保任意深度都被排除，含 skill/.env 等）
+**/.env
+**/.env.local
+**/.env.example
 .env
 .env.local
 .env.example
