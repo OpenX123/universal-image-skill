@@ -19,9 +19,12 @@ async function startMermaidMock({ status = 200, body = TINY_PNG, svgBody = TINY_
   return await mockHttpServer({
     routes: {
       '/img/': (req, res) => {
-        // path 形如 /img/<base64url>
-        const segment = decodeURIComponent(req.url.slice('/img/'.length))
-        // 把 base64url 还原成 base64
+        // path 形如 /img/<base64url>?type=png&width=...&scale=...
+        // 先剥离查询串再 base64url 解码
+        const afterPrefix = req.url.slice('/img/'.length)
+        const qIdx = afterPrefix.indexOf('?')
+        const segmentRaw = qIdx === -1 ? afterPrefix : afterPrefix.slice(0, qIdx)
+        const segment = decodeURIComponent(segmentRaw)
         const std = segment.replace(/-/g, '+').replace(/_/g, '/')
         const padded = std + '=='.slice((std.length + 2) % 4)
         let decoded
@@ -214,6 +217,81 @@ describe('render-mermaid.mjs', () => {
     }
   })
 
+  it('默认调用带 width=1600 scale=2 高清参数', async () => {
+    const mock = await startMermaidMock()
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--inline', 'graph TD; A-->B',
+          '--output-dir', dir
+        ], { env: { MERMAID_INK_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const imgReq = mock.requests.find((r) => r.url && r.url.startsWith('/img/'))
+        assert.ok(imgReq, '应有 /img/ 请求')
+        assert.match(imgReq.url, /[?&]width=1600/)
+        assert.match(imgReq.url, /[?&]scale=2/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('--scale 3 --width 2000 透传到 URL', async () => {
+    const mock = await startMermaidMock()
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--inline', 'graph TD; A-->B',
+          '--output-dir', dir,
+          '--scale', '3',
+          '--width', '2000'
+        ], { env: { MERMAID_INK_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const imgReq = mock.requests.find((r) => r.url && r.url.startsWith('/img/'))
+        assert.match(imgReq.url, /[?&]width=2000/)
+        assert.match(imgReq.url, /[?&]scale=3/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('--scale 越界（如 5）报错退出', async () => {
+    await withTempDir(async (dir) => {
+      const { exitCode, lastJsonLine } = await runScript(SCRIPT, [
+        '--inline', 'graph TD; A-->B',
+        '--output-dir', dir,
+        '--scale', '5'
+      ], { env: { MERMAID_INK_URL: 'http://127.0.0.1:1' } })
+
+      assert.equal(exitCode, 1)
+      assert.equal(lastJsonLine.ok, false)
+      assert.match(lastJsonLine.error.message, /scale/i)
+    })
+  })
+
+  it('SVG 输出不带 width/scale 查询参数', async () => {
+    const mock = await startMermaidMock()
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--inline', 'graph TD; A-->B',
+          '--output-dir', dir,
+          '--format', 'svg'
+        ], { env: { MERMAID_INK_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const svgReq = mock.requests.find((r) => r.url && r.url.startsWith('/svg/'))
+        assert.ok(svgReq)
+        assert.ok(!svgReq.url.includes('?'), 'svg 不应带查询参数')
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
   it('base64url 编码正确：mock 端能 decode 回原文', async () => {
     const mock = await startMermaidMock()
     try {
@@ -228,7 +306,11 @@ describe('render-mermaid.mjs', () => {
         // 找到 /img/ 请求并断言解码回的原文等于 inline
         const imgReq = mock.requests.find((r) => r.url && r.url.startsWith('/img/'))
         assert.ok(imgReq, '应当至少有一次 /img/ 请求')
-        const segment = decodeURIComponent(imgReq.url.slice('/img/'.length))
+        // 剥离查询串再解码（高清参数化后 URL 形如 /img/<b64>?type=png&width=...&scale=...）
+        const afterPrefix = imgReq.url.slice('/img/'.length)
+        const qIdx = afterPrefix.indexOf('?')
+        const segmentRaw = qIdx === -1 ? afterPrefix : afterPrefix.slice(0, qIdx)
+        const segment = decodeURIComponent(segmentRaw)
         const std = segment.replace(/-/g, '+').replace(/_/g, '/')
         const padded = std + '=='.slice((std.length + 2) % 4)
         const decoded = Buffer.from(padded, 'base64').toString('utf8')

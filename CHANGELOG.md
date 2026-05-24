@@ -4,6 +4,37 @@
 
 ## [Unreleased]
 
+## [0.3.5] - 2026-05-24
+
+### 重要：路由策略反转
+
+之前默认走 Mermaid（视觉一般），且用户明示「用 image2 画」时还会被关键词路由偷换成 Mermaid。
+现在：
+
+- **第 0 优先级**：用户明示引擎（「用 image2 画」「用 mermaid 画」「用 plantuml 画」）→ 严格按指定，**绝不偷换**
+- **第 1 优先级**：用户没指定时，只有「流程图 / 时序图 / 类图 / UML / 状态机 / 用例图 / 架构图 / 甘特图 / 思维导图」等明确**工程图表**才走 Mermaid/PlantUML
+- **默认**：其他所有视觉需求（照片、插画、海报、封面、原型、示意图、模糊「画一张」请求）都走 AI 生图
+- 不再「反问用户用哪个引擎」，模糊场景直接用 AI 生图（视觉效果好）
+
+### 改进：清晰度
+
+之前 Mermaid/PlantUML 出图都有点糊，现在调清晰度参数为默认行为：
+
+- **Mermaid**：URL 自动带 `?width=1600&scale=2`，PNG 出图 3200 宽，清晰度约 4x
+- **PlantUML**：自动在 `@startuml` 后注入 `skinparam dpi 200`，PNG 像素约 2x（默认 dpi 96）
+- 用户已在源码自己写过 `skinparam dpi` 时不重复注入
+- SVG 输出（`--format svg`）天然矢量清晰，不做这些处理
+
+新增 CLI 参数：
+
+- Mermaid: `--scale 1|2|3` 默认 `2`、`--width <100-4000>` 默认 `1600`
+- PlantUML: `--dpi <50-600>` 默认 `200`
+
+### 守则
+
+- 新增守则 #11：**用户明示引擎绝不偷换**（违例时 Claude 必须按用户指定执行，再事后委婉提醒）
+- 新增守则 #12：清晰度参数已设合理默认，不要主动调小
+
 ## [0.3.4] - 2026-05-24
 
 ### 新增
@@ -72,7 +103,8 @@
 - `update` 命令本身不会就地升级已全局安装的 npm 包，需手动 `npm install -g @openx123/universal-image-skill@latest` 后再次执行 `install`
 - Mermaid / PlantUML 源码会上传至各自公共服务，敏感场景请通过 `MERMAID_INK_URL` / `PLANTUML_SERVER_URL` 切换到自建实例
 
-[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.4...HEAD
+[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.5...HEAD
+[0.3.5]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.5
 [0.3.4]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.4
 [0.3.3]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.3
 [0.3.2]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.2

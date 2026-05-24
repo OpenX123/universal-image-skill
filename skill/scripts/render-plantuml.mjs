@@ -57,6 +57,18 @@ function ensureUmlWrappers(source) {
   return `@startuml\n${source}\n@enduml\n`
 }
 
+// 在 @startuml 之后第一行注入 skinparam dpi（如果用户没自己写），提升 PNG 清晰度
+// PlantUML 默认 dpi 96，提到 200 可让线条/文字明显更清晰，svg 不需要
+function injectDpi(source, dpi) {
+  if (!dpi || dpi === 96) return source
+  // 用户已经显式设过就不动
+  if (/^\s*skinparam\s+dpi\s+\d+/im.test(source)) return source
+  return source.replace(
+    /(@start[a-z]+[^\n]*\n)/i,
+    `$1skinparam dpi ${dpi}\n`,
+  )
+}
+
 async function main() {
   const start = Date.now()
   const args = parseArgs(process.argv.slice(2))
@@ -71,7 +83,13 @@ async function main() {
   if (!rawSource || !rawSource.trim()) {
     throw new Error('PlantUML 源码为空')
   }
-  const source = ensureUmlWrappers(rawSource)
+  // dpi 默认 200（约 2x 清晰度）；svg 输出不需要 dpi（矢量天然清晰）
+  const dpi = args.dpi ? Number(args.dpi) : 200
+  if (!Number.isFinite(dpi) || dpi < 50 || dpi > 600) {
+    throw new Error(`--dpi 需要 50-600 之间的整数，收到：${args.dpi}`)
+  }
+  const wrapped = ensureUmlWrappers(rawSource)
+  const source = format === 'svg' ? wrapped : injectDpi(wrapped, dpi)
 
   // ~h<HEX> 是 PlantUML 服务端官方支持的明文 hex 编码
   const hex = Buffer.from(source, 'utf8').toString('hex')

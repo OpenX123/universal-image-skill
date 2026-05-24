@@ -75,8 +75,22 @@ async function main() {
   }
 
   // mermaid.ink: /img/<BASE64URL> 或 /svg/<BASE64URL>
+  // 高清参数：?width=W&scale=S，scale 必须搭配 width 才生效（mermaid.ink 文档限制）
+  // 默认 width=1600 scale=2 → 出图 3200 宽，对绝大多数文档/聊天清晰够用
   const b64url = Buffer.from(source, 'utf8').toString('base64url')
-  const path = format === 'svg' ? `/svg/${b64url}` : `/img/${b64url}`
+  let path = format === 'svg' ? `/svg/${b64url}` : `/img/${b64url}`
+
+  if (format !== 'svg') {
+    const width = args.width ? Number(args.width) : 1600
+    const scale = args.scale ? Number(args.scale) : 2
+    if (!Number.isFinite(width) || width < 100 || width > 4000) {
+      throw new Error(`--width 需要 100-4000 之间的整数，收到：${args.width}`)
+    }
+    if (!Number.isFinite(scale) || scale < 1 || scale > 3) {
+      throw new Error(`--scale 仅支持 1 / 2 / 3，收到：${args.scale}`)
+    }
+    path += `?type=png&width=${width}&scale=${scale}`
+  }
   const url = `${base}${path}`
 
   process.stderr.write(`[mermaid] GET ${url}\n`)

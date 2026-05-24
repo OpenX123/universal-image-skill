@@ -124,6 +124,90 @@ describe('render-plantuml.mjs', () => {
     }
   })
 
+  it('默认 PNG 自动注入 skinparam dpi 200 提升清晰度', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode, lastJsonLine } = await runScript(SCRIPT, [
+          '--inline', '@startuml\nA -> B\n@enduml',
+          '--output-dir', dir
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const pngReq = mock.requests.find((r) => r.url && r.url.startsWith('/png/~h'))
+        const decoded = decodeHexFromPath(pngReq.url)
+        assert.match(decoded, /skinparam\s+dpi\s+200/, '应自动注入 skinparam dpi 200')
+        // 保存的 .puml 也应含 dpi 行（方便用户重现）
+        const srcText = await readFile(lastJsonLine.sourcePath, 'utf8')
+        assert.match(srcText, /skinparam\s+dpi\s+200/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('--dpi 400 透传到注入', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--inline', '@startuml\nA -> B\n@enduml',
+          '--output-dir', dir,
+          '--dpi', '400'
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const pngReq = mock.requests.find((r) => r.url && r.url.startsWith('/png/~h'))
+        const decoded = decodeHexFromPath(pngReq.url)
+        assert.match(decoded, /skinparam\s+dpi\s+400/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('用户源码已含 skinparam dpi 时不重复注入', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const inline = '@startuml\nskinparam dpi 150\nA -> B\n@enduml'
+        const { exitCode } = await runScript(SCRIPT, [
+          '--inline', inline,
+          '--output-dir', dir
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const pngReq = mock.requests.find((r) => r.url && r.url.startsWith('/png/~h'))
+        const decoded = decodeHexFromPath(pngReq.url)
+        const matches = decoded.match(/skinparam\s+dpi\s+\d+/g) || []
+        assert.equal(matches.length, 1, '应当只有用户的一行 dpi 设定，不重复注入')
+        assert.match(matches[0], /150/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('SVG 输出不注入 dpi（矢量天然清晰）', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--inline', '@startuml\nA -> B\n@enduml',
+          '--output-dir', dir,
+          '--format', 'svg'
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const svgReq = mock.requests.find((r) => r.url && r.url.startsWith('/svg/~h'))
+        const decoded = decodeHexFromPath(svgReq.url)
+        assert.doesNotMatch(decoded, /skinparam\s+dpi/, 'svg 模式不应注入 dpi')
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
   it('支持 --format svg', async () => {
     const mock = await startPlantumlMock()
     try {
