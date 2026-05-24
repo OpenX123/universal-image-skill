@@ -7,9 +7,6 @@
 
 Claude Code 万能生图 Skill — 让 Claude 自动选用 Mermaid / PlantUML / AI 生图三种引擎之一生成图片。
 
-## 效果预览
-
-<img width="2048" height="1152" alt="universal-image-skill 在 Claude Code 中的效果" src="https://github.com/user-attachments/assets/bda89443-203c-40ad-949c-9f610bf5c6b5" />
 
 ---
 
@@ -63,11 +60,15 @@ npx @openx123/universal-image-skill config
 
 重启后对 Claude 说一句：
 
-> 画一张用户登录的流程图
+> /universal-image 帮我画一个claude web端多agents对话的原型图
 
-Claude 会自动调用 Mermaid 引擎，把图片写到当前工作目录的 `./output/` 下，并在回复中用 Markdown 引用。
+Claude 会自动调用生图引擎，把图片写到当前工作目录的 `./output/` 下，并在回复中用 Markdown 引用。
 
 ---
+## 效果预览
+<img width="1144" height="700" alt="PixPin_2026-05-24_07-45-08" src="https://github.com/user-attachments/assets/813e5885-b66b-4bcd-a7ae-90cb09d8ba6a" />
+
+<img width="949" height="553" alt="PixPin_2026-05-24_07-45-52" src="https://github.com/user-attachments/assets/300982b1-fcf3-4047-ad30-0c896c0f4615" />
 
 ## 使用示例
 
