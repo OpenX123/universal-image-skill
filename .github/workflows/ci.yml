@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }} / Node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node: ['20.x', '22.x']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Show versions
+        run: |
+          node --version
+          npm --version
+
+      - name: Syntax check all .mjs
+        shell: bash
+        run: |
+          set -e
+          files=$(find bin installer skill tests -type f -name '*.mjs' 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "No .mjs files found, skipping syntax check"
+            exit 0
+          fi
+          for f in $files; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Run tests
+        shell: bash
+        run: node --test tests/*.test.mjs
+
+      - name: Verify CLI --help
+        shell: bash
+        run: node bin/cli.mjs --help

@@ -1,0 +1,35 @@
+# 注意：package.json 的 files 字段才是权威白名单
+# 本文件作为兜底黑名单，确保以下内容不进入 npm tarball
+
+# 测试与 CI
+tests/
+.github/
+
+# 运行时产物
+output/
+*.log
+
+# 环境变量
+.env
+.env.local
+.env.example
+
+# npm 打包产物
+*.tgz
+.npmrc
+
+# 项目文档（非用户文档）
+方案.md
+CHANGELOG.md.draft
+
+# 编辑器
+.vscode/
+.idea/
+
+# 操作系统垃圾
+.DS_Store
+Thumbs.db
+
+# 覆盖率
+coverage/
+.nyc_output/

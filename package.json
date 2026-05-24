@@ -1,0 +1,42 @@
+{
+  "name": "@openx123/universal-image-skill",
+  "version": "0.3.0",
+  "description": "Claude Code 万能生图 Skill：Mermaid / PlantUML / AI 生图，一键安装",
+  "type": "module",
+  "bin": {
+    "universal-image-skill": "./bin/cli.mjs"
+  },
+  "files": [
+    "bin/",
+    "installer/",
+    "skill/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "install:local": "node bin/cli.mjs install",
+    "version:show": "node bin/cli.mjs version"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openx123/universal-image-skill"
+  },
+  "keywords": [
+    "claude-code",
+    "skill",
+    "mermaid",
+    "plantuml",
+    "ai-image",
+    "diagram"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}
