@@ -9,7 +9,7 @@ Claude Code 万能生图 Skill — 让 Claude 自动选用 Mermaid / PlantUML / 
 
 ## 效果预览
 
-<img width="1106" height="551" alt="universal-image-skill 在 Claude Code 中的效果" src="https://github.com/user-attachments/assets/1c382a26-7fe7-4fbe-8887-483ab344c804" />
+<img width="2048" height="1152" alt="universal-image-skill 在 Claude Code 中的效果" src="https://github.com/user-attachments/assets/bda89443-203c-40ad-949c-9f610bf5c6b5" />
 
 ---
 
