@@ -4,6 +4,15 @@
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-05-24
+
+### 改进
+
+- **SKILL.md 增加尺寸选择表**：明确手机/原型/竖版用 `1024x1536`、横幅/壁纸用 `1536x1024`、默认 `1024x1024`，避免 Claude 因为不清楚比例选错
+- **SKILL.md 强化重试规则**：明文要求 Claude 遇到 `*_NETWORK` / `*_TIMEOUT` / 5xx 时**原样重试 1 次**，禁止悄悄降级 `--size` / `--prompt` / source 主体（前者会导致原型图比例错乱、后者改变用户原意）
+- 错误处理表为每个 error.code 标注「是否重试 / 怎么重试」，新增 `PLANTUML_NETWORK` / `PLANTUML_TIMEOUT` / `IMAGE_NETWORK` 三行
+- 操作守则新增第 9、10 条，要求 Claude 在第一次网络失败时主动告知用户「正在自动重试一次」
+
 ## [0.3.1] - 2026-05-24
 
 ### 修复
@@ -34,6 +43,7 @@
 - `update` 命令本身不会就地升级已全局安装的 npm 包，需手动 `npm install -g @openx123/universal-image-skill@latest` 后再次执行 `install`
 - Mermaid / PlantUML 源码会上传至各自公共服务，敏感场景请通过 `MERMAID_INK_URL` / `PLANTUML_SERVER_URL` 切换到自建实例
 
-[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.2
 [0.3.1]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.1
 [0.3.0]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.0

@@ -200,6 +200,14 @@ node ~/.claude/skills/universal-image/scripts/render-image.mjs \
   --size 1024x1024
 ```
 
+**尺寸选择（按用户意图一次性决定，调用后不要再改）**：
+
+| 用户描述                                          | 推荐 --size  | 比例   |
+| ------------------------------------------------- | ------------ | ------ |
+| 默认 / 没说 / 横构图 / 写实场景                    | `1024x1024`  | 1:1    |
+| 手机界面 / App UI / 原型图 / 海报竖版 / 人像写真 | `1024x1536`  | 2:3    |
+| 桌面壁纸 / 横幅 banner / 电影海报 / 风景宽屏     | `1536x1024`  | 3:2    |
+
 回复用户时，把英文 prompt 也回显出来，便于用户微调：
 
 ```markdown
@@ -230,18 +238,24 @@ node ~/.claude/skills/universal-image/scripts/render-image.mjs \
 
 ## 6. 错误处理
 
-当返回 `{ "ok": false }` 时，**不要继续呈现图片**，而是按 `error.code` 分类向用户解释：
+当返回 `{ "ok": false }` 时，**不要继续呈现图片**，而是按 `error.code` 分类处理。
 
-| error.code               | 含义                          | 建议向用户说的话                                                                            |
+**首要原则**：`*_NETWORK` / `*_TIMEOUT` / `*_HTTP_FAILED`（5xx）都是**瞬时错误**。
+脚本内部已经做过 3 次自动重试，但跨网络长链路偶发失败是常态。**遇到这三类错误时，先原样重试 1 次**（参数完全不动，不要改 prompt、不要改 size、不要改 source），失败两次以上再向用户说明并请示。
+
+| error.code               | 含义                          | 处理动作                                                                                    |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------- |
-| `CONFIG_MISSING`         | .env 缺必填字段               | 请运行 `npx @openx123/universal-image-skill config` 完成配置                                |
-| `MERMAID_HTTP_FAILED`    | mermaid.ink 服务异常          | 公共服务可能限速或宕机，稍后重试，或自建 mermaid.ink 后设置 `MERMAID_INK_URL`               |
-| `MERMAID_TIMEOUT`        | Mermaid 超时                  | 网络慢或源码过大，请简化图表后重试                                                          |
-| `MERMAID_NETWORK`        | 网络异常                      | 检查本机网络/代理                                                                           |
-| `PLANTUML_HTTP_FAILED`   | plantuml.com 服务异常         | 同上，或自建 PlantUML 后设置 `PLANTUML_SERVER_URL`                                          |
-| `IMAGE_HTTP_FAILED`      | 中转站异常（含 401/403/429）  | 检查 `IMAGE_API_KEY` 是否有效、余额是否充足、模型名 `IMAGE_MODEL` 是否正确                  |
-| `IMAGE_TIMEOUT`          | AI 生图超时                   | AI 生图本就慢，可重试或简化 prompt                                                          |
-| 其他                     | 未分类错误                    | 把 `error.message` 原文展示给用户                                                           |
+| `CONFIG_MISSING`         | .env 缺必填字段               | **不重试**。请用户运行 `npx @openx123/universal-image-skill config` 配置                    |
+| `MERMAID_HTTP_FAILED`    | mermaid.ink 服务异常          | 5xx 原样重试 1 次；4xx 检查源码语法。多次失败建议自建并设置 `MERMAID_INK_URL`               |
+| `MERMAID_TIMEOUT`        | Mermaid 超时                  | **原样重试 1 次**。再失败考虑简化图表                                                       |
+| `MERMAID_NETWORK`        | 网络异常                      | **原样重试 1 次**。再失败请用户检查本机网络/代理                                            |
+| `PLANTUML_HTTP_FAILED`   | plantuml.com 服务异常         | 同 Mermaid 同名规则                                                                         |
+| `PLANTUML_TIMEOUT`       | PlantUML 超时                 | **原样重试 1 次**                                                                           |
+| `PLANTUML_NETWORK`       | 网络异常                      | **原样重试 1 次**                                                                           |
+| `IMAGE_HTTP_FAILED`      | 中转站异常                    | 5xx 原样重试 1 次；401/403 不重试，让用户检查 `IMAGE_API_KEY`；429 等 10s 再重试            |
+| `IMAGE_TIMEOUT`          | AI 生图超时                   | **原样重试 1 次**（中转站排队是常见原因，不是 prompt 问题）                                 |
+| `IMAGE_NETWORK`          | 网络异常                      | **原样重试 1 次**。AI 生图响应大（200KB-2MB），断流概率比小图高                             |
+| 其他                     | 未分类错误                    | 不重试，把 `error.message` 原文展示给用户                                                   |
 
 ---
 
@@ -255,3 +269,10 @@ node ~/.claude/skills/universal-image/scripts/render-image.mjs \
 6. 用户说「保存到桌面」「保存到 ./diagrams」时，传 `--output-dir` 参数
 7. Windows 用户的路径要用 `%USERPROFILE%` 或绝对路径，不要假设 shell 是 bash
 8. 跨平台一律用 `node <script-path>` 显式调用，不依赖 .mjs 的可执行位
+9. **绝不**在网络/超时失败后悄悄降级关键参数（`--size` / `--prompt` 的语义部分 / source 主体），那会改变用户的原始意图。
+   正确做法：参数原样重试 1 次；仍失败如实告知用户并请示，让用户决定是「再试一次」还是「换参数」。
+   反例：用户要 `1024x1536` 手机原型，网络失败后改成 `1024x1024` → 出来的图比例错了，原型图不可用。
+10. **网络瞬时错误是常态，不是 bug**。`*_NETWORK` / `*_TIMEOUT` / 5xx 出现一次时：
+    - 第一反应：**「这通常是中转站排队或网络抖动，正在自动重试一次」**（一句话告知用户）
+    - 然后用**完全相同的命令**再调一次脚本
+    - 仍失败再展示错误细节并征求用户意见，**不要**第二次就改参数或换引擎
