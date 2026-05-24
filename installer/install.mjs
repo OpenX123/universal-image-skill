@@ -5,10 +5,11 @@ import {
   getSkillInstallDir,
   getEnvPath,
   getVersionJsonPath,
-  getPackageRoot,
   getPackageSkillSourceDir,
   getPackageJsonPath,
   getOldDirBackupPath,
+  getBackupRootDir,
+  getLegacyBackupGlob,
   PACKAGE_NAME,
 } from './paths.mjs';
 
@@ -27,6 +28,36 @@ async function readJsonSafe(p) {
     return JSON.parse(raw);
   } catch {
     return null;
+  }
+}
+
+/**
+ * 把 ~/.claude/skills/universal-image.bak-* 这种遗留备份移到新位置。
+ * 0.3.0 之前的 installer 把备份放在 skills/ 下，会被 Claude Code
+ * 当成 Skill 加载（"幽灵 Skill"），这里一次性清理。
+ */
+async function migrateLegacyBackups() {
+  const { dir, prefix, envPrefix } = getLegacyBackupGlob();
+  const backupRoot = getBackupRootDir();
+  let entries;
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    return;
+  }
+  for (const name of entries) {
+    const isDirBackup = name.startsWith(prefix);
+    const isEnvBackup = name.startsWith(envPrefix);
+    if (!isDirBackup && !isEnvBackup) continue;
+    const src = path.join(dir, name);
+    const dst = path.join(backupRoot, isEnvBackup ? `legacy-${name}` : `legacy-${name.slice(prefix.length)}`);
+    try {
+      await fs.rename(src, dst);
+      console.log(`→ 迁移遗留备份：${name} -> ${path.relative(backupRoot, dst) || dst}`);
+    } catch (e) {
+      // 迁移失败不阻塞主流程
+      console.log(`  (跳过遗留备份 ${name}：${e.message})`);
+    }
   }
 }
 
@@ -59,8 +90,12 @@ export default async function runInstall() {
   const pkg = await readJsonSafe(getPackageJsonPath());
   const newVersion = pkg?.version ?? '0.0.0';
 
-  // 2. 准备目录
+  // 2. 准备目录（安装根 + 备份根）
   await fs.mkdir(skillsRoot, { recursive: true });
+  await fs.mkdir(getBackupRootDir(), { recursive: true });
+
+  // 2b. 迁移 0.3.0 之前的遗留备份（之前放在 skills/ 下会被当幽灵 Skill）
+  await migrateLegacyBackups();
 
   // 3. 备份现有安装
   let envBackup = null;

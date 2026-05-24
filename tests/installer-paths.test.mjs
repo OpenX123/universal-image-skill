@@ -10,6 +10,9 @@ import {
   getEnvPath,
   getVersionJsonPath,
   getPackageRoot,
+  getBackupRootDir,
+  getOldDirBackupPath,
+  getEnvBackupPath,
   SKILL_NAME
 } from '../installer/paths.mjs'
 
@@ -52,5 +55,30 @@ describe('installer/paths.mjs', () => {
   it('getPackageRoot 目录下存在 package.json', () => {
     const root = getPackageRoot()
     assert.ok(existsSync(join(root, 'package.json')), `package.json 应在 ${root}`)
+  })
+
+  it('getBackupRootDir 在 skills/ 之外（避免被当幽灵 Skill）', () => {
+    const backup = getBackupRootDir()
+    const skills = getClaudeSkillsDir()
+    assert.ok(
+      !backup.startsWith(skills),
+      `备份根 ${backup} 不能位于 skills 根 ${skills} 之下`,
+    )
+    assert.ok(
+      backup.endsWith(`${SKILL_NAME}-backups`),
+      `备份根应以 ${SKILL_NAME}-backups 结尾，实际 ${backup}`,
+    )
+  })
+
+  it('getOldDirBackupPath 在备份根下，含版本号与时间戳', () => {
+    const p = getOldDirBackupPath('0.3.0', '20260524-120000')
+    assert.ok(p.startsWith(getBackupRootDir()))
+    assert.ok(p.endsWith('0.3.0-20260524-120000'))
+  })
+
+  it('getEnvBackupPath 在备份根下，含时间戳', () => {
+    const p = getEnvBackupPath('20260524-120000')
+    assert.ok(p.startsWith(getBackupRootDir()))
+    assert.ok(p.endsWith('20260524-120000.bak'))
   })
 })

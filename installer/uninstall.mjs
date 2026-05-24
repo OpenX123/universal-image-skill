@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import {
@@ -58,6 +59,7 @@ export default async function runUninstall() {
   if (await pathExists(envPath)) {
     const content = await fs.readFile(envPath, 'utf8');
     backupPath = getEnvBackupPath(isoTimestampForFilename());
+    await fs.mkdir(path.dirname(backupPath), { recursive: true });
     await fs.writeFile(backupPath, content, 'utf8');
   }
 

@@ -295,40 +295,53 @@ export default async function runConfig() {
   const plantumlScript = path.join(scriptsDir, 'render-plantuml.mjs');
   const imageScript = path.join(scriptsDir, 'render-image.mjs');
 
-  // Mermaid
+  // Mermaid（实测 1-3s，给 20s 兜底网络抖动）
   if (await pathExists(mermaidScript)) {
+    const t0 = Date.now();
     const r = await smokeTest(
       mermaidScript,
       ['--inline', 'graph TD; A-->B'],
-      8000,
+      20000,
     );
-    console.log(r.ok ? '  ✓ Mermaid: OK' : `  ✗ Mermaid: ${r.error}`);
+    const sec = ((Date.now() - t0) / 1000).toFixed(1);
+    console.log(r.ok ? `  ✓ Mermaid: OK (${sec}s)` : `  ✗ Mermaid: ${r.error}`);
   } else {
     console.log('  - Mermaid: 脚本不存在，跳过');
   }
 
-  // PlantUML
+  // PlantUML（实测 10-15s，公共服务有时更慢，给 45s）
   if (await pathExists(plantumlScript)) {
+    const t0 = Date.now();
     const r = await smokeTest(
       plantumlScript,
       ['--inline', '@startuml\nA -> B\n@enduml'],
-      8000,
+      45000,
     );
-    console.log(r.ok ? '  ✓ PlantUML: OK' : `  ✗ PlantUML: ${r.error}`);
+    const sec = ((Date.now() - t0) / 1000).toFixed(1);
+    console.log(r.ok ? `  ✓ PlantUML: OK (${sec}s)` : `  ✗ PlantUML: ${r.error}`);
   } else {
     console.log('  - PlantUML: 脚本不存在，跳过');
   }
 
-  // AI 生图
+  // AI 生图（gpt-image 系列实测 30-90s，给 180s 兜底慢中转）
   if (!answers.IMAGE_API_BASE_URL || !answers.IMAGE_API_KEY) {
     console.log('  - AI 生图: 未配置 base URL 或 API Key，跳过');
   } else if (await pathExists(imageScript)) {
+    console.log('  → AI 生图: 正在生成测试图（gpt-image 通常 30-90 秒，请耐心等待）...');
+    const t0 = Date.now();
     const r = await smokeTest(
       imageScript,
-      ['--prompt', 'a tiny red dot', '--smoke'],
-      15000,
+      ['--prompt', 'a tiny red dot on white background', '--size', '1024x1024'],
+      180000,
     );
-    console.log(r.ok ? '  ✓ AI 生图: OK' : `  ✗ AI 生图: ${r.error}`);
+    const sec = ((Date.now() - t0) / 1000).toFixed(1);
+    if (r.ok) {
+      console.log(`  ✓ AI 生图: OK (${sec}s)`);
+    } else {
+      console.log(`  ✗ AI 生图: ${r.error} (${sec}s)`);
+      console.log('    提示：若超时可能是中转站慢/排队，可直接跑一次脚本验证：');
+      console.log('         node scripts/render-image.mjs --prompt "test"');
+    }
   } else {
     console.log('  - AI 生图: 脚本不存在，跳过');
   }

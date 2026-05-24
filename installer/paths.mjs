@@ -60,13 +60,18 @@ export function getPackageJsonPath() {
 }
 
 /**
- * .env 在卸载时的备份路径（位于 skills 根目录而非已删除的 skill 目录）
+ * 备份根目录：~/.claude/universal-image-backups/
+ * 故意放在 skills/ 之外，避免备份的 SKILL.md 被 Claude Code 当成新 Skill 加载
+ */
+export function getBackupRootDir() {
+  return path.join(os.homedir(), '.claude', `${SKILL_NAME}-backups`);
+}
+
+/**
+ * .env 在卸载时的备份路径
  */
 export function getEnvBackupPath(timestamp) {
-  return path.join(
-    getClaudeSkillsDir(),
-    `${SKILL_NAME}.env.backup-${timestamp}`,
-  );
+  return path.join(getBackupRootDir(), `env-${timestamp}.bak`);
 }
 
 /**
@@ -74,8 +79,17 @@ export function getEnvBackupPath(timestamp) {
  */
 export function getOldDirBackupPath(oldVersion, timestamp) {
   const ver = oldVersion || 'unknown';
-  return path.join(
-    getClaudeSkillsDir(),
-    `${SKILL_NAME}.bak-${ver}-${timestamp}`,
-  );
+  return path.join(getBackupRootDir(), `${ver}-${timestamp}`);
+}
+
+/**
+ * 历史遗留备份目录（0.3.0 及更早版本放在 skills/ 下）
+ * 升级时迁移到新位置，避免 Claude 误识别为 Skill
+ */
+export function getLegacyBackupGlob() {
+  return {
+    dir: getClaudeSkillsDir(),
+    prefix: `${SKILL_NAME}.bak-`,
+    envPrefix: `${SKILL_NAME}.env.backup-`,
+  };
 }
