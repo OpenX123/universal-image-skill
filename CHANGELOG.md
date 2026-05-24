@@ -4,6 +4,24 @@
 
 ## [Unreleased]
 
+## [0.3.4] - 2026-05-24
+
+### 新增
+
+- AI 生图新增 `--ratio` + `--tier` 两个用户友好参数：
+  - 支持 6 个比例预设：`1:1` / `16:9` / `9:16` / `4:3` / `3:4` / `2:3`
+  - 三档分辨率：`1k`（草图/测速）/ `2k`（主流推荐，默认）/ `4k`（画册/壁纸）
+  - 用户不再需要记忆像素，Claude 也不会再因「不知道哪个尺寸合适」而走偏
+- AI 生图新增 `--quality low|medium|high`，对应 gpt-image 的官方质量档位（影响速度与价格）
+- AI 生图新增 `--background transparent|opaque|auto`，可生成透明背景 logo（需配合 png/webp）
+- AI 生图 `--format` 扩展支持 `webp`（之前仅 png/jpg）
+
+### 改进
+
+- **修正 v0.3.2 的错误描述**：gpt-image-2 实际支持远多于 3 档的尺寸（最高 3840 边、需 16 倍数），SKILL.md 之前错误声称「只支持 3 个 preset」
+- `--size` 现在接受任意符合服务端约束的 `WxH`（宽高都是 16 倍数、单边 ≤3840、≥16），优先级高于 `--ratio`
+- 守则 #9 反例更新为新参数命名（避免悄悄从 `--ratio 9:16` 降级到 `--ratio 1:1`、从 `--tier 4k` 降级到 `--tier 2k`）
+
 ## [0.3.3] - 2026-05-24
 
 ### 新增
@@ -54,7 +72,8 @@
 - `update` 命令本身不会就地升级已全局安装的 npm 包，需手动 `npm install -g @openx123/universal-image-skill@latest` 后再次执行 `install`
 - Mermaid / PlantUML 源码会上传至各自公共服务，敏感场景请通过 `MERMAID_INK_URL` / `PLANTUML_SERVER_URL` 切换到自建实例
 
-[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.4...HEAD
+[0.3.4]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.4
 [0.3.3]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.3
 [0.3.2]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.2
 [0.3.1]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.1

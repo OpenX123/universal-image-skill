@@ -52,12 +52,16 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 | `--inline "<src>"`    | mermaid / plantuml                | 内联传源码（短源码用，含特殊字符需转义） |
 | `--stdin`             | mermaid / plantuml                | 从标准输入读源码（**推荐**长源码用此方式）|
 | `--prompt "<text>"`   | image                             | AI 生图的文字描述（必填）                |
-| `--output-dir <dir>`  | 全部                              | 图片输出目录，默认 `./output`            |
-| `--source-dir <dir>`  | mermaid / plantuml                | 源码（.mmd/.puml）输出目录，默认同 `--output-dir`。文档模式专用 |
-| `--format png\|svg`   | mermaid / plantuml                | 输出格式，默认 png                       |
-| `--format png\|jpg`   | image                             | 输出格式，默认 png                       |
-| `--size 1024x1024`    | image                             | AI 生图分辨率，默认 1024x1024            |
-| `--filename <name>`   | 全部                              | 自定义文件名（含扩展名）                 |
+| `--output-dir <dir>`           | 全部                              | 图片输出目录，默认 `./output`            |
+| `--source-dir <dir>`           | mermaid / plantuml                | 源码（.mmd/.puml）输出目录，默认同 `--output-dir`。文档模式专用 |
+| `--format png\|svg`            | mermaid / plantuml                | 输出格式，默认 png                       |
+| `--format png\|jpeg\|webp`     | image                             | 输出格式，默认 png                       |
+| `--ratio <ratio>`              | image                             | **推荐用这个**，6 个比例预设（见 4.5 节比例表） |
+| `--tier 1k\|2k\|4k`            | image                             | 配合 `--ratio` 选档位，默认 `2k`（主流推荐） |
+| `--size WxH`                   | image                             | 直接指定像素，宽高须 16 的倍数、单边 ≤3840。优先级高于 `--ratio` |
+| `--quality low\|medium\|high`  | image                             | 质量档位，省略由模型默认（通常 medium）  |
+| `--background transparent\|opaque\|auto` | image                  | 背景，transparent 仅 png/webp 可用，jpeg 无透明通道 |
+| `--filename <name>`            | 全部                              | 自定义文件名（含扩展名）                 |
 
 ### 返回值（stdout 最后一行 JSON）
 
@@ -198,21 +202,53 @@ EOF
 ```bash
 node ~/.claude/skills/universal-image/scripts/render-image.mjs \
   --prompt "Cyberpunk city at night, neon lights reflecting on wet streets, flying cars, cinematic lighting, ultra detailed, 8k" \
-  --size 1024x1024
+  --ratio 16:9
 ```
 
-**尺寸选择（按用户意图一次性决定，调用后不要再改）**：
+#### 比例 + 档位（强烈优先用 `--ratio`，不要直接拼像素）
 
-| 用户描述                                          | 推荐 --size  | 比例   |
-| ------------------------------------------------- | ------------ | ------ |
-| 默认 / 没说 / 横构图 / 写实场景                    | `1024x1024`  | 1:1    |
-| 手机界面 / App UI / 原型图 / 海报竖版 / 人像写真 | `1024x1536`  | 2:3    |
-| 桌面壁纸 / 横幅 banner / 电影海报 / 风景宽屏     | `1536x1024`  | 3:2    |
+按用户意图选比例，按需求精度选档位。**调用后不要因网络失败就降级比例或档位**（参见守则 #9）。
 
-回复用户时，把英文 prompt 也回显出来，便于用户微调：
+| 比例   | 1K 草图/测速   | **2K 主流（默认）** | 4K 画册/壁纸    | 适用场景                                  |
+| ------ | -------------- | ------------------- | --------------- | ----------------------------------------- |
+| `1:1`  | 1024×1024      | **2048×2048**       | 2880×2880       | 头像、社交配图、电商主图                  |
+| `16:9` | 1024×576       | **2048×1152**       | 3840×2160       | 电脑壁纸、网页 banner、视频封面           |
+| `9:16` | 576×1024       | **1152×2048**       | 2160×3840       | 手机壁纸、海报、抖音/小红书竖版封面       |
+| `4:3`  | 1024×768       | **2048×1536**       | 3072×2304       | 演示文稿、iPad 适配图                     |
+| `3:4`  | 768×1024       | **1536×2048**       | 2304×3072       | 小红书封面、Pinterest 配图                |
+| `2:3`  | 1024×1536      | **1360×2048**       | 2336×3520       | 书籍封面、冲印照片、人像写真              |
+
+**档位选择启发**：
+
+- 用户没说精度 / 只是想看看 → 用默认 `2k`
+- 用户说「快速试一下」「先看看效果」「批量预览」 → 加 `--tier 1k --quality low`
+- 用户说「画册级」「印刷」「壁纸」「高清」「最终交付」 → 加 `--tier 4k --quality high`
+
+**调用样板**：
+
+```bash
+# 默认：2K + medium 质量
+node ... --prompt "..." --ratio 16:9
+
+# 草图模式：1K + low 质量（快、省钱）
+node ... --prompt "..." --ratio 9:16 --tier 1k --quality low
+
+# 画册模式：4K + high 质量（慢、贵、精细）
+node ... --prompt "..." --ratio 16:9 --tier 4k --quality high
+
+# 透明 logo（必须 png 或 webp）
+node ... --prompt "..." --ratio 1:1 --background transparent --format png
+
+# 非常规比例：直接 --size，注意宽高须 16 倍数、单边 ≤3840
+node ... --prompt "..." --size 1920x800
+```
+
+#### 回复用户的样式
+
+把英文 prompt 也回显出来，便于用户说「改一下」：
 
 ```markdown
-已生成图片（prompt: `Cyberpunk city at night...`）：
+已生成图片（prompt: `Cyberpunk city at night...`，2048×1152 / 16:9）：
 
 ![赛博朋克城市](./output/img-20260524-103045-image-b8e1.png)
 ```
@@ -329,9 +365,10 @@ EOF
 6. 用户说「保存到桌面」「保存到 ./diagrams」时，传 `--output-dir` 参数
 7. Windows 用户的路径要用 `%USERPROFILE%` 或绝对路径，不要假设 shell 是 bash
 8. 跨平台一律用 `node <script-path>` 显式调用，不依赖 .mjs 的可执行位
-9. **绝不**在网络/超时失败后悄悄降级关键参数（`--size` / `--prompt` 的语义部分 / source 主体），那会改变用户的原始意图。
+9. **绝不**在网络/超时失败后悄悄降级关键参数（`--ratio` / `--tier` / `--size` / `--prompt` 的语义部分 / source 主体），那会改变用户的原始意图。
    正确做法：参数原样重试 1 次；仍失败如实告知用户并请示，让用户决定是「再试一次」还是「换参数」。
-   反例：用户要 `1024x1536` 手机原型，网络失败后改成 `1024x1024` → 出来的图比例错了，原型图不可用。
+   反例：用户要 `--ratio 9:16` 手机原型，网络失败后改成 `--ratio 1:1` → 出来的图比例错了，原型图不可用。
+   反例：用户要 `--tier 4k` 壁纸，超时后改成 `--tier 2k` → 分辨率不够，无法当壁纸用。
 10. **网络瞬时错误是常态，不是 bug**。`*_NETWORK` / `*_TIMEOUT` / 5xx 出现一次时：
     - 第一反应：**「这通常是中转站排队或网络抖动，正在自动重试一次」**（一句话告知用户）
     - 然后用**完全相同的命令**再调一次脚本

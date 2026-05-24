@@ -177,6 +177,146 @@ describe('render-image.mjs', () => {
     }
   })
 
+  it('--ratio 16:9 默认 2k 档位：size 解析为 2048x1152', async () => {
+    const mock = await startImageMock({ mode: 'b64' })
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--prompt', 'landscape',
+          '--ratio', '16:9',
+          '--output-dir', dir
+        ], {
+          env: { IMAGE_API_BASE_URL: `${mock.url}/v1`, IMAGE_API_KEY: 'sk-test' }
+        })
+
+        assert.equal(exitCode, 0)
+        const payload = JSON.parse(mock.generationsRequests[0].body)
+        assert.equal(payload.size, '2048x1152', '16:9 + 默认 2k 应解析为 2048x1152')
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('--ratio 9:16 --tier 4k：size 解析为 2160x3840', async () => {
+    const mock = await startImageMock({ mode: 'b64' })
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--prompt', 'phone wallpaper',
+          '--ratio', '9:16',
+          '--tier', '4k',
+          '--output-dir', dir
+        ], {
+          env: { IMAGE_API_BASE_URL: `${mock.url}/v1`, IMAGE_API_KEY: 'sk-test' }
+        })
+
+        assert.equal(exitCode, 0)
+        const payload = JSON.parse(mock.generationsRequests[0].body)
+        assert.equal(payload.size, '2160x3840')
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('--size 优先级高于 --ratio', async () => {
+    const mock = await startImageMock({ mode: 'b64' })
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--prompt', 'custom',
+          '--size', '1920x1088',
+          '--ratio', '1:1',
+          '--output-dir', dir
+        ], {
+          env: { IMAGE_API_BASE_URL: `${mock.url}/v1`, IMAGE_API_KEY: 'sk-test' }
+        })
+
+        assert.equal(exitCode, 0)
+        const payload = JSON.parse(mock.generationsRequests[0].body)
+        assert.equal(payload.size, '1920x1088', '显式 --size 应覆盖 --ratio')
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('--size 不是 16 的倍数时退出码 1 且错误明确', async () => {
+    await withTempDir(async (dir) => {
+      const { exitCode, lastJsonLine } = await runScript(SCRIPT, [
+        '--prompt', 'invalid',
+        '--size', '1000x1000',
+        '--output-dir', dir
+      ], {
+        env: { IMAGE_API_BASE_URL: 'http://127.0.0.1:1/v1', IMAGE_API_KEY: 'sk-test' }
+      })
+
+      assert.equal(exitCode, 1)
+      assert.equal(lastJsonLine.ok, false)
+      assert.match(lastJsonLine.error.message, /16 的倍数/)
+    })
+  })
+
+  it('--ratio 不在白名单时退出码 1', async () => {
+    await withTempDir(async (dir) => {
+      const { exitCode, lastJsonLine } = await runScript(SCRIPT, [
+        '--prompt', 'invalid',
+        '--ratio', '7:3',
+        '--output-dir', dir
+      ], {
+        env: { IMAGE_API_BASE_URL: 'http://127.0.0.1:1/v1', IMAGE_API_KEY: 'sk-test' }
+      })
+
+      assert.equal(exitCode, 1)
+      assert.equal(lastJsonLine.ok, false)
+      assert.match(lastJsonLine.error.message, /ratio/)
+    })
+  })
+
+  it('quality / background / format 三参数透传到 API body', async () => {
+    const mock = await startImageMock({ mode: 'b64' })
+    try {
+      await withTempDir(async (dir) => {
+        const { exitCode } = await runScript(SCRIPT, [
+          '--prompt', 'transparent logo',
+          '--ratio', '1:1',
+          '--quality', 'high',
+          '--background', 'transparent',
+          '--format', 'png',
+          '--output-dir', dir
+        ], {
+          env: { IMAGE_API_BASE_URL: `${mock.url}/v1`, IMAGE_API_KEY: 'sk-test' }
+        })
+
+        assert.equal(exitCode, 0)
+        const payload = JSON.parse(mock.generationsRequests[0].body)
+        assert.equal(payload.quality, 'high')
+        assert.equal(payload.background, 'transparent')
+        assert.equal(payload.output_format, 'png')
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('background=transparent 配 format=jpeg 时直接拒绝', async () => {
+    await withTempDir(async (dir) => {
+      const { exitCode, lastJsonLine } = await runScript(SCRIPT, [
+        '--prompt', 'bad combo',
+        '--background', 'transparent',
+        '--format', 'jpeg',
+        '--output-dir', dir
+      ], {
+        env: { IMAGE_API_BASE_URL: 'http://127.0.0.1:1/v1', IMAGE_API_KEY: 'sk-test' }
+      })
+
+      assert.equal(exitCode, 1)
+      assert.equal(lastJsonLine.ok, false)
+      assert.match(lastJsonLine.error.message, /transparent|jpeg/)
+    })
+  })
+
   it('POST body 包含 model / prompt / n / size', async () => {
     const mock = await startImageMock({ mode: 'b64' })
     try {
