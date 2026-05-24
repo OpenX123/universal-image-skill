@@ -4,6 +4,17 @@
 
 ## [Unreleased]
 
+## [0.3.3] - 2026-05-24
+
+### 新增
+
+- **文档模式**：Mermaid / PlantUML 新增 `--source-dir` 参数，让源码（.mmd / .puml）可以与图片分目录存放。常见用法 `--output-dir images --source-dir images/code`，图片直接放进博客/文档项目，源码归档到子目录。AI 生图无源码不受影响
+- SKILL.md 新增 4.6 节「文档模式」：列出触发条件（cwd 下有 `README.md` / `docs/` / `_posts/` 等、用户编辑 `.md` 文件、用户明示「插到文档」等），并给出完整调用示例和 Markdown 回复模板
+
+### 改进
+
+- `saveSource()` 现在会自动 `mkdir` 源码目录（之前假设与图片同目录无需建），支持源码独立路径
+
 ## [0.3.2] - 2026-05-24
 
 ### 改进
@@ -43,7 +54,8 @@
 - `update` 命令本身不会就地升级已全局安装的 npm 包，需手动 `npm install -g @openx123/universal-image-skill@latest` 后再次执行 `install`
 - Mermaid / PlantUML 源码会上传至各自公共服务，敏感场景请通过 `MERMAID_INK_URL` / `PLANTUML_SERVER_URL` 切换到自建实例
 
-[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.2...HEAD
+[Unreleased]: https://github.com/openx123/universal-image-skill/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.3
 [0.3.2]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.2
 [0.3.1]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.1
 [0.3.0]: https://github.com/openx123/universal-image-skill/releases/tag/v0.3.0

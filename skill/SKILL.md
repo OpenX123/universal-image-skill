@@ -52,7 +52,8 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 | `--inline "<src>"`    | mermaid / plantuml                | 内联传源码（短源码用，含特殊字符需转义） |
 | `--stdin`             | mermaid / plantuml                | 从标准输入读源码（**推荐**长源码用此方式）|
 | `--prompt "<text>"`   | image                             | AI 生图的文字描述（必填）                |
-| `--output-dir <dir>`  | 全部                              | 输出目录，默认 `./output`                |
+| `--output-dir <dir>`  | 全部                              | 图片输出目录，默认 `./output`            |
+| `--source-dir <dir>`  | mermaid / plantuml                | 源码（.mmd/.puml）输出目录，默认同 `--output-dir`。文档模式专用 |
 | `--format png\|svg`   | mermaid / plantuml                | 输出格式，默认 png                       |
 | `--format png\|jpg`   | image                             | 输出格式，默认 png                       |
 | `--size 1024x1024`    | image                             | AI 生图分辨率，默认 1024x1024            |
@@ -215,6 +216,65 @@ node ~/.claude/skills/universal-image/scripts/render-image.mjs \
 
 ![赛博朋克城市](./output/img-20260524-103045-image-b8e1.png)
 ```
+
+---
+
+## 4.6 文档模式（写博客/文档时强烈推荐）
+
+**触发条件**——满足任一即启用：
+
+- 当前 `cwd` 下有 `README.md` / `docs/` / `posts/` / `articles/` / `content/` / `_posts/` 任一个
+- 当前 `cwd` 是常见静态站点项目根（含 `hexo.config.yml` / `_config.yml` / `vitepress` / `docusaurus.config.js` / `mkdocs.yml` / `astro.config.*`）
+- 用户**正在编辑** `.md` / `.mdx` 文件
+- 用户明确说「插入到文档/博客」「写入到 images」「和文档放一起」「保存到当前目录的 images」
+
+**调用方式**——给所有 render 脚本统一加这两个参数：
+
+```bash
+--output-dir images --source-dir images/code
+```
+
+效果：
+- 图片落到 `./images/<filename>.png`
+- 源码落到 `./images/code/<filename>.mmd` 或 `.puml`（AI 生图无源码，跳过）
+
+**回复用户的 Markdown 写法**（路径必须是 `images/...` 这种 docs 相对路径，能直接被 Markdown 渲染）：
+
+```markdown
+![用户注册流程](images/img-20260524-103045-mermaid-a3f7.png)
+```
+
+如果用户需要后续微调，告诉他源码在 `images/code/img-20260524-103045-mermaid-a3f7.mmd`。
+
+**文档模式示例（完整）**：
+
+用户在博客项目下说「画一张登录时序图，插到文档里」：
+
+```bash
+cat <<'EOF' | node ~/.claude/skills/universal-image/scripts/render-plantuml.mjs --stdin --output-dir images --source-dir images/code
+@startuml
+participant User
+participant Frontend
+participant Backend
+User -> Frontend: 登录
+Frontend -> Backend: POST /login
+Backend --> Frontend: JWT
+Frontend --> User: 跳转首页
+@enduml
+EOF
+```
+
+回复用户：
+
+```markdown
+已生成时序图，可直接粘到你的 Markdown：
+
+![登录时序图](images/img-20260524-103045-plantuml-b8e1.png)
+
+源码在 `images/code/img-20260524-103045-plantuml-b8e1.puml`，要改的话告诉我。
+```
+
+**注意**：AI 生图（`render-image.mjs`）只支持 `--output-dir`，没有源码，所以文档模式下也只传 `--output-dir images`。
 
 ---
 

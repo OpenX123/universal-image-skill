@@ -181,6 +181,39 @@ describe('render-mermaid.mjs', () => {
     }
   })
 
+  it('--source-dir：图片和源码可落到不同目录（文档模式）', async () => {
+    const mock = await startMermaidMock()
+    try {
+      await withTempDir(async (dir) => {
+        const imgDir = join(dir, 'images')
+        const srcDir = join(dir, 'images', 'code')
+        const inline = 'graph TD\n  Docs-->Mode'
+        const { exitCode, lastJsonLine } = await runScript(SCRIPT, [
+          '--inline', inline,
+          '--output-dir', imgDir,
+          '--source-dir', srcDir
+        ], { env: { MERMAID_INK_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        assert.equal(lastJsonLine.ok, true)
+        // 图片在 images/
+        assert.ok(lastJsonLine.path.includes(`${'images'}`), `path 应含 images，实际 ${lastJsonLine.path}`)
+        assert.ok(!lastJsonLine.path.includes(join('images', 'code')), 'path 不应在 code 子目录')
+        // 源码在 images/code/
+        assert.ok(lastJsonLine.sourcePath.includes(join('images', 'code')), `sourcePath 应在 images/code，实际 ${lastJsonLine.sourcePath}`)
+        // 两者基名相同（除扩展名）
+        const imgBase = lastJsonLine.path.split(/[\\/]/).pop().replace(/\.png$/, '')
+        const srcBase = lastJsonLine.sourcePath.split(/[\\/]/).pop().replace(/\.mmd$/, '')
+        assert.equal(imgBase, srcBase, '图片与源码应同基名便于配对')
+        // 源码内容正确
+        const srcText = await readFile(lastJsonLine.sourcePath, 'utf8')
+        assert.equal(srcText, inline)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
   it('base64url 编码正确：mock 端能 decode 回原文', async () => {
     const mock = await startMermaidMock()
     try {

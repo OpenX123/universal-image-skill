@@ -45,9 +45,11 @@ export async function saveBuffer(absDir, filename, buffer) {
   return full
 }
 
-// 把源码写到同目录、同名（仅扩展名不同）文件
+// 把源码写到指定目录、与图片同基名（仅扩展名不同）文件
+// absDir 可以与图片目录不同（文档模式：图片在 images/，源码在 images/code/）
 export async function saveSource(absDir, baseImageFilename, sourceText, sourceExt) {
   if (!sourceText) return null
+  await ensureDir(absDir)
   const cleanExt = sourceExt.startsWith('.') ? sourceExt.slice(1) : sourceExt
   // 去掉原扩展名
   const dot = baseImageFilename.lastIndexOf('.')
@@ -56,4 +58,10 @@ export async function saveSource(absDir, baseImageFilename, sourceText, sourceEx
   const full = join(absDir, filename)
   await writeFile(full, sourceText, 'utf8')
   return full
+}
+
+// 解析源码目录：override > 默认与图片目录同
+export function resolveSourceDir(override, imageDir) {
+  if (!override) return imageDir
+  return isAbsolute(override) ? override : resolve(process.cwd(), override)
 }

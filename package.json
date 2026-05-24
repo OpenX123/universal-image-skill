@@ -1,6 +1,6 @@
 {
   "name": "@openx123/universal-image-skill",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "Claude Code 万能生图 Skill：Mermaid / PlantUML / AI 生图，一键安装",
   "type": "module",
   "bin": {

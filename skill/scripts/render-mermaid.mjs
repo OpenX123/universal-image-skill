@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { Buffer } from 'node:buffer'
 import { loadConfig } from '../lib/config.mjs'
 import { fetchWithRetry, HttpError } from '../lib/http.mjs'
-import { resolveOutputDir, makeFilename, saveBuffer, saveSource } from '../lib/output.mjs'
+import { resolveOutputDir, resolveSourceDir, makeFilename, saveBuffer, saveSource } from '../lib/output.mjs'
 
 const ENGINE = 'mermaid'
 
@@ -85,9 +85,10 @@ async function main() {
   const buffer = Buffer.from(arrBuf)
 
   const absDir = resolveOutputDir(args['output-dir'], config)
+  const sourceDir = resolveSourceDir(args['source-dir'], absDir)
   const filename = args.filename || makeFilename(ENGINE, format, source)
   const fullPath = await saveBuffer(absDir, filename, buffer)
-  const sourcePath = await saveSource(absDir, filename, source, 'mmd')
+  const sourcePath = await saveSource(sourceDir, filename, source, 'mmd')
 
   emit({
     ok: true,
