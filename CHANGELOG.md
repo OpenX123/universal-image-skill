@@ -4,6 +4,40 @@
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-05-28
+
+### 新增：自动新版本提醒
+
+每次跑 CLI 命令时被动检测 npm 上的最新版本，发现新版本就打一行简短提示，引导用户跑 `universal-image-skill update`。
+
+实现要点：
+- 新增 `installer/notifier.mjs`：缓存 + 提示 + 后台刷新三个职责
+- **两段式查询**：命令开始前只读本地缓存即时打提示（毫秒级）；命令结束后带 1.5 秒超时刷新缓存，失败静默
+- **24 小时缓存窗口**：超过才查 registry，正常使用零网络浪费
+- 缓存文件：`~/.claude/universal-image-cache.json`
+- `update` 命令自身查到 latest 后通过 `recordLatestVersion` 喂给缓存，避免 `cli.mjs` 后置再发一次重复请求
+
+### 提示样式
+
+```
+ℹ 新版本可用: v0.4.3 → v0.5.0
+  运行 `universal-image-skill update` 一键升级
+```
+
+### 禁用方法
+
+- `UNIVERSAL_IMAGE_SKIP_UPDATE_NOTIFIER=1` 环境变量
+- `CI=true` 环境（GitHub Actions / GitLab CI 等）自动跳过
+
+### 不打扰原则
+
+- `help` / `--help` / 无参跑 CLI 时不打提示
+- `update` 命令自身不打前置提示（命令本身就会主动展示更新信息，避免冗余）
+
+### 测试
+
+新增 13 个单元测试覆盖：缓存 lazy 路径解析、提示边界（空缓存 / 同版本 / 新版本）、双 env 禁用开关、缓存新鲜跳过、缓存过期刷新、无网 / 500 静默失败、`recordLatestVersion` 写入。全套件 60 个测试全部通过。
+
 ## [0.4.2] - 2026-05-28
 
 ### 体验改进：`update` 命令真正一键升级

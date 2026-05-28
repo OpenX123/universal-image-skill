@@ -5,6 +5,10 @@ import {
   getVersionJsonPath,
   getSkillInstallDir,
 } from '../installer/paths.mjs';
+import {
+  showNotificationIfAvailable,
+  refreshCacheIfStale,
+} from '../installer/notifier.mjs';
 
 const HELP_TEXT = `万能生图 Skill - CLI
 
@@ -50,12 +54,23 @@ function printHelp() {
   process.stdout.write(HELP_TEXT);
 }
 
+// 不在 help / update 命令里跑前置提示：
+// - help：用户只是在查命令，提示会干扰
+// - update：命令本身就会主动查并展示更新信息，再加前置提示是冗余
+const SKIP_PRE_NOTIFIER = new Set(['help', '-h', '--help', 'update']);
+
 async function dispatch(argv) {
   const cmd = argv[0];
 
   if (!cmd || cmd === 'help' || cmd === '-h' || cmd === '--help') {
     printHelp();
     return 0;
+  }
+
+  // 前置：根据缓存打提示（瞬时；缓存为空时跳过）
+  if (!SKIP_PRE_NOTIFIER.has(cmd)) {
+    const pkg = await readJsonSafe(getPackageJsonPath());
+    await showNotificationIfAvailable(pkg?.version);
   }
 
   switch (cmd) {
@@ -96,6 +111,8 @@ async function dispatch(argv) {
 async function main() {
   try {
     const code = await dispatch(process.argv.slice(2));
+    // 后置：缓存过期才发请求查 registry，最多多花 1.5s，失败静默
+    await refreshCacheIfStale();
     process.exit(code);
   } catch (err) {
     console.error('✗ 执行失败：');

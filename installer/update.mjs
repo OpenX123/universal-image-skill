@@ -178,6 +178,14 @@ export default async function runUpdate() {
     return;
   }
   console.log(`npm 最新版本:   ${latestVersion}`);
+  // 顺手喂给 notifier 的缓存，避免 cli.mjs 后置再发一次请求。
+  // 动态 import 避免 update.mjs 和 notifier.mjs 互相依赖。
+  try {
+    const { recordLatestVersion } = await import('./notifier.mjs');
+    await recordLatestVersion(latestVersion);
+  } catch {
+    // 静默，无关主流程
+  }
 
   // 3. 比较
   const cmp = compareSemver(latestVersion, localVersion);
@@ -207,8 +215,8 @@ export default async function runUpdate() {
   }
 
   // 6. 自动一键升级；失败则退化到手动两步提示
-  const ok = await performAutoUpgrade(latestVersion);
-  if (ok) return;
+  const upgraded = await performAutoUpgrade(latestVersion);
+  if (upgraded) return;
 
   console.log('');
   console.log('→ 自动升级未完成，请按以下两步手动完成：');
