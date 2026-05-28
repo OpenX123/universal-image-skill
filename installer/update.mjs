@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import readline from 'node:readline/promises';
+import { spawn } from 'node:child_process';
 import { stdin as input, stdout as output } from 'node:process';
 import {
   getVersionJsonPath,
@@ -93,6 +94,67 @@ async function confirm(question) {
   }
 }
 
+/**
+ * spawn 一个子进程并把 stdio 透传给当前终端，让用户实时看到 npm/npx 的输出。
+ * Windows 下 npm/npx 实际是 .cmd 文件，需要 shell:true 才能被 spawn 找到。
+ * 返回 { ok, code }。
+ */
+function runStreaming(command, args) {
+  return new Promise((resolve) => {
+    const child = spawn(command, args, {
+      stdio: 'inherit',
+      shell: process.platform === 'win32', // npm.cmd / npx.cmd 必须经 shell
+    });
+    child.on('error', (err) => {
+      console.error(`✗ 启动 ${command} 失败: ${err.message}`);
+      resolve({ ok: false, code: -1 });
+    });
+    child.on('close', (code) => {
+      resolve({ ok: code === 0, code });
+    });
+  });
+}
+
+/**
+ * 当用户确认升级后，尝试一键完成：npm i -g 拉新包 + 跑新包的 install。
+ * 任一步骤失败则退化到提示用户手动跑两步。
+ * 注意：当前 Node 进程的源码即便被 npm 覆盖也不会崩——Node 已把模块载入内存。
+ * install 必须 spawn 子进程跑，子进程会重新加载磁盘上的新版 CLI；如果在
+ * 当前进程内 import './install.mjs'，用的还是内存里的旧版函数。
+ */
+async function performAutoUpgrade(latestVersion) {
+  console.log('');
+  console.log(`→ 正在拉取 ${PACKAGE_NAME}@${latestVersion} ...`);
+  console.log(`  执行: npm install -g ${PACKAGE_NAME}@latest`);
+  console.log('');
+  const step1 = await runStreaming('npm', ['install', '-g', `${PACKAGE_NAME}@latest`]);
+  if (!step1.ok) {
+    console.log('');
+    console.error(`✗ npm install -g 失败（退出码 ${step1.code}）。`);
+    return false;
+  }
+
+  console.log('');
+  console.log('→ 部署新版 skill 文件到 ~/.claude/skills/universal-image ...');
+  console.log('  执行: universal-image-skill install');
+  console.log('');
+  // 用 npx 调起最新版的 bin，避免 PATH 指向旧 shim 或全局未链接的问题。
+  // --no-install 防止它又去拉一遍包；-y 跳过 npx 的 install prompt。
+  const step2 = await runStreaming(
+    'npx',
+    ['-y', `${PACKAGE_NAME}@${latestVersion}`, 'install'],
+  );
+  if (!step2.ok) {
+    console.log('');
+    console.error(`✗ install 步骤失败（退出码 ${step2.code}）。`);
+    return false;
+  }
+
+  console.log('');
+  console.log(`✓ 已升级到 v${latestVersion}。重启 Claude Code 后生效。`);
+  return true;
+}
+
 export default async function runUpdate() {
   // 1. 读本地版本
   const localMeta = await readJsonSafe(getVersionJsonPath());
@@ -144,13 +206,16 @@ export default async function runUpdate() {
     return;
   }
 
-  // 6. 提示用户怎么升
+  // 6. 自动一键升级；失败则退化到手动两步提示
+  const ok = await performAutoUpgrade(latestVersion);
+  if (ok) return;
+
   console.log('');
-  console.log('→ 当前 CLI 进程运行的是已安装版本，无法就地替换自身。');
-  console.log('  请按以下两步完成升级：');
+  console.log('→ 自动升级未完成，请按以下两步手动完成：');
   console.log('');
   console.log(`  1. npm install -g ${PACKAGE_NAME}@latest`);
   console.log('  2. universal-image-skill install');
   console.log('');
   console.log('升级流程会自动备份 .env 与旧版本目录，不会丢配置。');
+  process.exitCode = 1;
 }

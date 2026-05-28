@@ -4,6 +4,22 @@
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-05-28
+
+### 体验改进：`update` 命令真正一键升级
+
+旧版 update 检测到新版本后会让用户**手动**跑 `npm install -g …@latest` 和 `universal-image-skill install` 两条命令，原因写的是"CLI 进程跑的是已安装版本无法替换自身"——这其实过度保守。Node 进程的源码即便被 npm 覆盖也不会崩，install 步骤又必须 spawn 子进程跑（子进程才会重新加载磁盘上的新版 CLI），所以根本不存在"替换自身"的问题。
+
+现在的流程：
+1. 检测到新版本，确认 y 后
+2. 父进程 spawn `npm install -g @openx123/universal-image-skill@latest`，stdio 透传给用户看实时进度
+3. 完成后 spawn `npx -y @openx123/universal-image-skill@<新版本> install`，把新版 skill 文件部署到 `~/.claude/skills/universal-image/`
+4. 任一步失败则退化到原来的两步手动提示，并以非零退出码报告
+
+平台兼容：Windows 下 `npm`/`npx` 实际是 `.cmd` 文件，spawn 时已加 `shell: true` 处理；其他平台保持原样。
+
+> ⚠️ 注意：本改动从 0.4.2 起生效。如果你当前装的是 0.4.0 或更早，跑 `update` 时执行的是旧逻辑，本次升级仍需手动两步；升到 0.4.2 之后，未来的版本升级就是真正的一键完成。
+
 ## [0.4.1] - 2026-05-28
 
 ### 修复：自动改写废弃的 PlantUML 着色语法

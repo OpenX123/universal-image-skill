@@ -1,6 +1,6 @@
 {
   "name": "@openx123/universal-image-skill",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Claude Code 万能生图 Skill：PlantUML / AI 生图，一键安装",
   "type": "module",
   "bin": {
