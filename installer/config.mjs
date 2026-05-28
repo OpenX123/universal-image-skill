@@ -54,9 +54,6 @@ function serializeEnv(env) {
   lines.push(`IMAGE_API_KEY=${env.IMAGE_API_KEY ?? ''}`);
   lines.push(`IMAGE_MODEL=${env.IMAGE_MODEL ?? 'gpt-image-2'}`);
   lines.push('');
-  lines.push('# === Mermaid 服务 ===');
-  lines.push(`MERMAID_INK_URL=${env.MERMAID_INK_URL ?? 'https://mermaid.ink'}`);
-  lines.push('');
   lines.push('# === PlantUML 服务 ===');
   lines.push(
     `PLANTUML_SERVER_URL=${env.PLANTUML_SERVER_URL ?? 'https://www.plantuml.com/plantuml'}`,
@@ -256,11 +253,6 @@ export default async function runConfig() {
     );
 
     console.log('');
-    answers.MERMAID_INK_URL = await ask(
-      rl,
-      'Mermaid 服务',
-      current.MERMAID_INK_URL || 'https://mermaid.ink',
-    );
     answers.PLANTUML_SERVER_URL = await ask(
       rl,
       'PlantUML 服务',
@@ -291,23 +283,8 @@ export default async function runConfig() {
   console.log('→ 跑烟测 ...');
 
   const scriptsDir = path.join(installDir, 'scripts');
-  const mermaidScript = path.join(scriptsDir, 'render-mermaid.mjs');
   const plantumlScript = path.join(scriptsDir, 'render-plantuml.mjs');
   const imageScript = path.join(scriptsDir, 'render-image.mjs');
-
-  // Mermaid（实测 1-3s，给 20s 兜底网络抖动）
-  if (await pathExists(mermaidScript)) {
-    const t0 = Date.now();
-    const r = await smokeTest(
-      mermaidScript,
-      ['--inline', 'graph TD; A-->B'],
-      20000,
-    );
-    const sec = ((Date.now() - t0) / 1000).toFixed(1);
-    console.log(r.ok ? `  ✓ Mermaid: OK (${sec}s)` : `  ✗ Mermaid: ${r.error}`);
-  } else {
-    console.log('  - Mermaid: 脚本不存在，跳过');
-  }
 
   // PlantUML（实测 10-15s，公共服务有时更慢，给 45s）
   if (await pathExists(plantumlScript)) {

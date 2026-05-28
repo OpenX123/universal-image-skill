@@ -8,7 +8,6 @@ const __dirname = dirname(__filename)
 
 // 已知字段集合（值字符串化后输出）
 const KNOWN_FIELDS = Object.freeze([
-  'MERMAID_INK_URL',
   'PLANTUML_SERVER_URL',
   'IMAGE_API_BASE_URL',
   'IMAGE_API_KEY',
@@ -19,7 +18,6 @@ const KNOWN_FIELDS = Object.freeze([
 
 // 默认值（仅对零依赖也能跑的字段提供）
 const DEFAULTS = Object.freeze({
-  MERMAID_INK_URL: 'https://mermaid.ink',
   PLANTUML_SERVER_URL: 'https://www.plantuml.com/plantuml',
   IMAGE_MODEL: 'gpt-image-2',
   DEFAULT_FORMAT: 'png'

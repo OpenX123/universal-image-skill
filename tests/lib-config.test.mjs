@@ -20,7 +20,6 @@ async function withCwd(dir, fn) {
 // loadConfig 同时会读 skill/.env，可能对干净测试造成干扰
 // 解决：把所有 KNOWN_FIELDS 都从 process.env 删除，并把 cwd 切到一个无 .env 的临时目录
 const KNOWN_FIELDS = [
-  'MERMAID_INK_URL',
   'PLANTUML_SERVER_URL',
   'IMAGE_API_BASE_URL',
   'IMAGE_API_KEY',
@@ -44,8 +43,8 @@ describe('skill/lib/config.mjs', () => {
           assert.ok(typeof cfg === 'object')
           // IMAGE_API_KEY 没默认值，应当 undefined
           assert.equal(cfg.IMAGE_API_KEY, undefined)
-          // MERMAID_INK_URL 有默认值
-          assert.ok(cfg.MERMAID_INK_URL && cfg.MERMAID_INK_URL.startsWith('http'))
+          // PLANTUML_SERVER_URL 有默认值
+          assert.ok(cfg.PLANTUML_SERVER_URL && cfg.PLANTUML_SERVER_URL.startsWith('http'))
         })
       })
     })

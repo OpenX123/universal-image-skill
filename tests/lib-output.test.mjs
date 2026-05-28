@@ -29,9 +29,9 @@ describe('skill/lib/output.mjs', () => {
     })
   })
 
-  it("makeFilename('mermaid','png') 匹配规范命名", () => {
-    const name = makeFilename('mermaid', 'png')
-    const re = /^img-\d{8}-\d{6}-mermaid-[0-9a-f]{4,8}\.png$/
+  it("makeFilename('plantuml','png') 匹配规范命名", () => {
+    const name = makeFilename('plantuml', 'png')
+    const re = /^img-\d{8}-\d{6}-plantuml-[0-9a-f]{4,8}\.png$/
     assert.ok(re.test(name), `命名不符合期望：${name}`)
   })
 
@@ -60,14 +60,14 @@ describe('skill/lib/output.mjs', () => {
 
   it('saveSource：写入文本与传入一致，基于图片 basename 但扩展不同', async () => {
     await withTempDir(async (tmp) => {
-      const imageName = 'img-20260524-103045-mermaid-a3f7.png'
-      const sourceText = 'graph TD\n  A-->B'
-      const full = await saveSource(tmp, imageName, sourceText, 'mmd')
-      assert.ok(full && full.endsWith('.mmd'))
+      const imageName = 'img-20260524-103045-plantuml-a3f7.png'
+      const sourceText = '@startuml\nA -> B\n@enduml'
+      const full = await saveSource(tmp, imageName, sourceText, 'puml')
+      assert.ok(full && full.endsWith('.puml'))
       const text = await readFile(full, 'utf8')
       assert.equal(text, sourceText)
       // 同目录、同 basename
-      assert.equal(full, join(tmp, 'img-20260524-103045-mermaid-a3f7.mmd'))
+      assert.equal(full, join(tmp, 'img-20260524-103045-plantuml-a3f7.puml'))
     })
   })
 

@@ -1,11 +1,11 @@
 ---
 name: universal-image
-description: 万能生图 Skill。根据用户意图自动选用 Mermaid / PlantUML / AI 生图三种引擎之一生成图片，保存到本地并以 Markdown 形式呈现。触发词：生成流程图、画时序图、画状态图、画类图、画甘特图、画思维导图、UML 图、用例图、组件图、部署图、ER 图、画云架构、画 AWS 架构、画 Azure 架构、画 C4 架构、生成海报、生成卡片、生成插图、AI 画图、生成示意图、做张图、画一张、render diagram、draw architecture。
+description: 万能生图 Skill。根据用户意图自动选用 PlantUML / AI 生图两种引擎之一生成图片，保存到本地并以 Markdown 形式呈现。触发词：生成流程图、画时序图、画状态图、画类图、画甘特图、画思维导图、UML 图、用例图、组件图、部署图、ER 图、画云架构、画 AWS 架构、画 Azure 架构、画 C4 架构、生成海报、生成卡片、生成插图、AI 画图、生成示意图、做张图、画一张、render diagram、draw architecture。
 ---
 
 # 万能生图 Skill
 
-本 Skill 提供三个渲染脚本，按用户意图选用其一即可生成图片。脚本位于
+本 Skill 提供两个渲染脚本，按用户意图选用其一即可生成图片。脚本位于
 `~/.claude/skills/universal-image/scripts/`（Windows 为 `%USERPROFILE%\.claude\skills\universal-image\scripts\`）。
 
 ---
@@ -16,37 +16,35 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 
 - 画图相关动词：画一张 / 做张图 / 生成 / 渲染 / draw / render / generate
 - 图类型名词：流程图、时序图、状态图、类图、甘特图、思维导图、用例图、组件图、部署图、ER 图、架构图、海报、卡片、插图、示意图、封面
-- 显式指明引擎：用 mermaid、用 plantuml、用 AI 画
-- 上下文中已有源码（mermaid / plantuml 代码块）需要渲染成图
+- 显式指明引擎：用 plantuml、用 AI 画 / 用 image2
+- 上下文中已有 plantuml 源码代码块需要渲染成图
 
 ---
 
 ## 2. 路由决策表（关键）
 
 **第 0 优先级**：**用户明示了引擎就严格按用户的来，不要换**。
-- 「用 image2 画」「让 GPT 画」「用 AI 生图」「画一张照片/插画/原型图」→ 必须用 AI 生图，**绝不能因为「画的是流程图」就偷换成 Mermaid**
-- 「用 mermaid 画」「画一个 mermaid 时序图」→ 必须用 Mermaid
+- 「用 image2 画」「让 GPT 画」「用 AI 生图」「画一张照片/插画/原型图」→ 必须用 AI 生图，**绝不能因为「画的是流程图」就偷换成 PlantUML**
 - 「用 plantuml 画」「画一个 PlantUML 架构」→ 必须用 PlantUML
 
-**第 1 优先级**：用户没指定引擎时，按内容类型路由。**默认走 AI 生图**（视觉效果好），仅当用户明确要"工程图表"才走代码引擎。
+**第 1 优先级**：用户没指定引擎时，按内容类型路由。**默认走 AI 生图**（视觉效果好），仅当用户明确要"工程图表"才走 PlantUML。
 
 | 用户意图                                                                                                                                            | 引擎             | 脚本                       |
 | --------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | -------------------------- |
-| 流程图（flowchart）、状态图（FSM）、甘特图、用户旅程图、思维导图、git 分支图——**Mermaid 强项**                                                       | **Mermaid**      | `render-mermaid.mjs`       |
-| 时序图（**含 alt/loop/par 等复杂分支**）、类图、用例图、组件图、部署图、ER 图、对象图、活动图、C4 架构、云架构（AWS/Azure/GCP/K8s）——**PlantUML 强项** | **PlantUML**     | `render-plantuml.mjs`      |
-| 其他一切视觉需求：照片、插画、艺术、海报、封面、IP 形象、Logo、产品概念图、营销素材、原型图、示意图、概念图，**以及所有模糊「画一张」类请求**         | **AI 生图（默认）** | `render-image.mjs`         |
+| 流程图 / 活动图、时序图（含 alt/loop/par 复杂分支）、状态机（FSM）、类图、甘特图、用例图、组件图、部署图、对象图、ER 图、C4 架构、云架构（AWS/Azure/GCP/K8s）、思维导图——**精确、结构化的工程图表** | **PlantUML**     | `render-plantuml.mjs`      |
+| 其他一切视觉需求：照片、插画、艺术、海报、封面、IP 形象、Logo、产品概念图、营销素材、原型图、示意图、概念图、用户旅程图、git 分支图，**以及所有模糊「画一张」类请求** | **AI 生图（默认）** | `render-image.mjs`         |
 
-**为什么 AI 生图是默认而不是「反问」**：用户说「画一张 X」往往就是想要好看的视觉成品。AI 生图视觉效果远好于 Mermaid/PlantUML（后者是工程线框风格），且 image2 对"原型图/示意图"也能给出可用的视觉草稿。代码引擎只在用户明确需要**精确、结构化、可文本编辑**的图表时才用。
+**为什么 AI 生图是默认而不是「反问」**：用户说「画一张 X」往往就是想要好看的视觉成品。AI 生图视觉效果远好于 PlantUML（后者是工程线框风格），且 image2 对"原型图/示意图"也能给出可用的视觉草稿。PlantUML 只在用户明确需要**精确、结构化、可文本编辑**的图表时才用。
 
 **反例（错误路由，禁止）**：
 
 - 用户说「用 image2 画一张登录流程图」→ **必须**走 AI 生图（用户明示了引擎）。绝不要因为关键词「流程图」改路由
-- 用户说「用 mermaid 画一张赛博朋克城市」→ **必须**走 Mermaid（用户明示了引擎，结果可能不好看，那是用户的选择）
-- 用户说「画一张登录流程图」（**没指定引擎**）→ 走 Mermaid（"流程图"是它的强项）
+- 用户说「用 plantuml 画一张赛博朋克城市」→ **必须**走 PlantUML（用户明示了引擎，结果可能不好看，那是用户的选择）
+- 用户说「画一张登录流程图」（**没指定引擎**）→ 走 PlantUML（"流程图"是结构化工程图）
 - 用户说「画一张登录页原型图」（**没指定引擎**）→ 走 AI 生图（"原型图"想要视觉成品，不是流程图）
 - 用户说「画一张图给我看看」（模糊）→ 默认走 AI 生图（不再反问）
-- 不要用 Mermaid 画 ER 图（语法弱），用 PlantUML
-- 不要用 Mermaid 画云架构图（无图标库），用 PlantUML + AWS/Azure Icons
+- 用户说「画一张用户旅程图」（**没指定引擎**）→ 走 AI 生图（旅程图重视觉表达，不在 PlantUML 清单里）
+- ER 图、云架构图都走 PlantUML（结构精确、有图标库），**不要**交给 AI 生图（画不准）
 
 ---
 
@@ -56,15 +54,13 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 
 | 参数                  | 适用脚本                          | 含义                                     |
 | --------------------- | --------------------------------- | ---------------------------------------- |
-| `--input <file>`      | mermaid / plantuml                | 从文件读源码                             |
-| `--inline "<src>"`    | mermaid / plantuml                | 内联传源码（短源码用，含特殊字符需转义） |
-| `--stdin`             | mermaid / plantuml                | 从标准输入读源码（**推荐**长源码用此方式）|
+| `--input <file>`      | plantuml                          | 从文件读源码                             |
+| `--inline "<src>"`    | plantuml                          | 内联传源码（短源码用，含特殊字符需转义） |
+| `--stdin`             | plantuml                          | 从标准输入读源码（**推荐**长源码用此方式）|
 | `--prompt "<text>"`   | image                             | AI 生图的文字描述（必填）                |
 | `--output-dir <dir>`           | 全部                              | 图片输出目录，默认 `./output`            |
-| `--source-dir <dir>`           | mermaid / plantuml                | 源码（.mmd/.puml）输出目录，默认同 `--output-dir`。文档模式专用 |
-| `--format png\|svg`            | mermaid / plantuml                | 输出格式，默认 png                       |
-| `--scale 1\|2\|3`              | mermaid                           | PNG 高清倍数，默认 `2`（已经够清晰，**不要随便改小**） |
-| `--width <px>`                 | mermaid                           | PNG 渲染宽度，默认 `1600`，配合 scale 出 3200 高清 |
+| `--source-dir <dir>`           | plantuml                          | 源码（.puml）输出目录，默认同 `--output-dir`。文档模式专用 |
+| `--format png\|svg`            | plantuml                          | 输出格式，默认 png                       |
 | `--dpi <50-600>`               | plantuml                          | PNG 渲染 dpi，默认 `200`（约 2x 清晰度，**不要随便改小**） |
 | `--format png\|jpeg\|webp`     | image                             | 输出格式，默认 png                       |
 | `--ratio <ratio>`              | image                             | **推荐用这个**，6 个比例预设（见 4.5 节比例表） |
@@ -81,10 +77,10 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 ```json
 {
   "ok": true,
-  "engine": "mermaid",
-  "path": "/abs/path/to/output/img-20260524-103045-mermaid-a3f7.png",
-  "sourceCode": "graph TD\n  A-->B",
-  "sourcePath": "/abs/path/to/output/img-20260524-103045-mermaid-a3f7.mmd",
+  "engine": "plantuml",
+  "path": "/abs/path/to/output/img-20260524-103045-plantuml-a3f7.png",
+  "sourceCode": "@startuml\nA -> B\n@enduml",
+  "sourcePath": "/abs/path/to/output/img-20260524-103045-plantuml-a3f7.puml",
   "size": null,
   "durationMs": 1340
 }
@@ -95,9 +91,9 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 ```json
 {
   "ok": false,
-  "engine": "mermaid",
+  "engine": "plantuml",
   "error": {
-    "code": "MERMAID_HTTP_FAILED",
+    "code": "PLANTUML_HTTP_FAILED",
     "message": "Upstream returned 500",
     "httpStatus": 500
   }
@@ -110,36 +106,55 @@ description: 万能生图 Skill。根据用户意图自动选用 Mermaid / Plant
 
 ## 4. 调用示例
 
-### 4.1 Mermaid 流程图（推荐 stdin 方式）
+### 4.1 PlantUML 流程图 / 活动图（推荐 stdin 方式）
 
 用户：「画一张用户注册流程图」
 
-构造 Mermaid 源码后用 Bash 调用：
+构造 PlantUML activity 源码后用 Bash 调用：
 
 ```bash
-echo 'graph TD
-  A[访问注册页] --> B{已注册?}
-  B -->|是| C[跳转登录]
-  B -->|否| D[填写表单]
-  D --> E[发送验证码]
-  E --> F[完成注册]' | node ~/.claude/skills/universal-image/scripts/render-mermaid.mjs --stdin
+cat <<'EOF' | node ~/.claude/skills/universal-image/scripts/render-plantuml.mjs --stdin
+@startuml
+start
+:访问注册页;
+if (已注册?) then (是)
+  :跳转登录;
+else (否)
+  :填写表单;
+  :发送验证码;
+  :完成注册;
+endif
+stop
+@enduml
+EOF
 ```
 
 Windows PowerShell 写法（用 `--inline` 或临时文件更稳）：
 
 ```powershell
-'graph TD
-  A[访问] --> B[注册]' | node "$env:USERPROFILE\.claude\skills\universal-image\scripts\render-mermaid.mjs" --stdin
+'@startuml
+start
+:访问注册页;
+:填写表单;
+:完成注册;
+stop
+@enduml' | node "$env:USERPROFILE\.claude\skills\universal-image\scripts\render-plantuml.mjs" --stdin
 ```
+
+> ⚠️ **活动节点着色铁律**：给 activity 节点上色时，**只能**用以下两种写法之一——
+> - 颜色前置：`#FFE0B2:文字;`
+> - 颜色后置+尖括号：`:文字;<<#FFE0B2>>`
+>
+> **禁止**把裸 `#颜色` 放在 `;` 之后（如 `:文字; #FFE0B2`）。这种旧语法已被 plantuml.com 废弃，服务端不会报错中断，而是会把**整张图每个节点的文字都替换成 “This syntax is deprecated, you must add <<#…>>…” 警告句**，导致图能画出但文字全废。partition / 分区同理：用 `partition "名称" <<#FFE0B2>> { … }`，不要用裸 `#FFE0B2`。拿不准时**直接不上色**最稳妥。
 
 解析返回值中的 `path` 字段后，向用户回复：
 
 ```markdown
 已生成流程图：
 
-![用户注册流程](./output/img-20260524-103045-mermaid-a3f7.png)
+![用户注册流程](./output/img-20260524-103045-plantuml-a3f7.png)
 
-源码已同步保存到 `./output/img-20260524-103045-mermaid-a3f7.mmd`，你可以基于它继续微调。
+源码已同步保存到 `./output/img-20260524-103045-plantuml-a3f7.puml`，你可以基于它继续微调。
 ```
 
 ### 4.2 PlantUML 时序图
@@ -283,15 +298,23 @@ node ... --prompt "..." --size 1920x800
 
 效果：
 - 图片落到 `./images/<filename>.png`
-- 源码落到 `./images/code/<filename>.mmd` 或 `.puml`（AI 生图无源码，跳过）
+- 源码落到 `./images/code/<filename>.puml`（AI 生图无源码，跳过）
+
+**控制图片高度（文档配图铁律）**——正文里的图**太高会严重影响阅读体验**（读者要滚很久），文档模式下务必让图"偏横、不要瘦高"：
+
+- **AI 生图**：默认用横向/中等比例 `--ratio 16:9`（或 `4:3`），**不要用竖版** `9:16` / `3:4` / `2:3`，除非用户明确说要竖图 / 海报 / 手机壁纸 / 封面。文档模式下省略 `--ratio` 时也按 16:9 处理，而不是默认的 1:1。
+- **PlantUML 流程图 / 活动图**：节点一多就会竖到底。文档模式下**主动加 `left to right direction`** 让它横向排布；除非图本身很短（≤4 个节点）。
+- **PlantUML 状态机 / 类图**：同样优先 `left to right direction`，把图压扁。
+- **PlantUML 时序图**：高度由消息条数决定，无法靠布局压缩。消息很多（>12 条）时，回复里提醒用户「时序图较长，可考虑拆成两张分别配图」。
+- 兜底：若某张图判断会非常高（竖向长条），先按上面处理；仍然很高就在回复里告诉用户「这张图偏高，正文里可能要滚动，需要的话我可以拆分或换横版」。
 
 **回复用户的 Markdown 写法**（路径必须是 `images/...` 这种 docs 相对路径，能直接被 Markdown 渲染）：
 
 ```markdown
-![用户注册流程](images/img-20260524-103045-mermaid-a3f7.png)
+![用户注册流程](images/img-20260524-103045-plantuml-a3f7.png)
 ```
 
-如果用户需要后续微调，告诉他源码在 `images/code/img-20260524-103045-mermaid-a3f7.mmd`。
+如果用户需要后续微调，告诉他源码在 `images/code/img-20260524-103045-plantuml-a3f7.puml`。
 
 **文档模式示例（完整）**：
 
@@ -353,10 +376,7 @@ EOF
 | error.code               | 含义                          | 处理动作                                                                                    |
 | ------------------------ | ----------------------------- | ------------------------------------------------------------------------------------------- |
 | `CONFIG_MISSING`         | .env 缺必填字段               | **不重试**。请用户运行 `npx @openx123/universal-image-skill config` 配置                    |
-| `MERMAID_HTTP_FAILED`    | mermaid.ink 服务异常          | 5xx 原样重试 1 次；4xx 检查源码语法。多次失败建议自建并设置 `MERMAID_INK_URL`               |
-| `MERMAID_TIMEOUT`        | Mermaid 超时                  | **原样重试 1 次**。再失败考虑简化图表                                                       |
-| `MERMAID_NETWORK`        | 网络异常                      | **原样重试 1 次**。再失败请用户检查本机网络/代理                                            |
-| `PLANTUML_HTTP_FAILED`   | plantuml.com 服务异常         | 同 Mermaid 同名规则                                                                         |
+| `PLANTUML_HTTP_FAILED`   | plantuml.com 服务异常         | 5xx 原样重试 1 次；4xx 检查源码语法。多次失败建议自建并设置 `PLANTUML_SERVER_URL`           |
 | `PLANTUML_TIMEOUT`       | PlantUML 超时                 | **原样重试 1 次**                                                                           |
 | `PLANTUML_NETWORK`       | 网络异常                      | **原样重试 1 次**                                                                           |
 | `IMAGE_HTTP_FAILED`      | 中转站异常                    | 5xx 原样重试 1 次；401/403 不重试，让用户检查 `IMAGE_API_KEY`；429 等 10s 再重试            |
@@ -384,8 +404,8 @@ EOF
     - 第一反应：**「这通常是中转站排队或网络抖动，正在自动重试一次」**（一句话告知用户）
     - 然后用**完全相同的命令**再调一次脚本
     - 仍失败再展示错误细节并征求用户意见，**不要**第二次就改参数或换引擎
-11. **用户明示引擎绝不偷换**。识别明示词：「用 X 画」「用 X 生成」「让 X 来画」「换 X」（X 可以是 image2 / gpt / AI / mermaid / plantuml）。
+11. **用户明示引擎绝不偷换**。识别明示词：「用 X 画」「用 X 生成」「让 X 来画」「换 X」（X 可以是 image2 / gpt / AI / plantuml）。
     - 命中明示词后，**忽略所有路由表**，直接走用户指定的引擎，哪怕内容明显是别的引擎更合适
-    - 如果用户指定的引擎对该内容做不出好效果（如用 Mermaid 画照片），先做完再委婉提醒「你指定了 Mermaid，画照片它真不擅长，下次可以不指定让我自动选 AI 生图」
-    - **禁止**理由：「检测到流程图意图，所以改用 Mermaid 了」——这是把路由规则凌驾于用户明示之上，错。
-12. **Mermaid/PlantUML 的清晰度参数（--scale / --width / --dpi）已经设了合理默认值**，**不要因为图片"够看"就主动调小**。只有用户说「文件太大了」「想要更高清」时才调整。
+    - 如果用户指定的引擎对该内容做不出好效果（如用 PlantUML 画照片），先做完再委婉提醒「你指定了 PlantUML，画照片它真不擅长，下次可以不指定让我自动选 AI 生图」
+    - **禁止**理由：「检测到照片意图，所以改用 AI 生图了」——这是把路由规则凌驾于用户明示之上，错。
+12. **PlantUML 的清晰度参数（--dpi）已经设了合理默认值**，**不要因为图片"够看"就主动调小**。只有用户说「文件太大了」「想要更高清」时才调整。
