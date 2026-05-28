@@ -4,6 +4,19 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-05-28
+
+### 修复：自动改写废弃的 PlantUML 着色语法
+
+plantuml.com 已废弃 `:foo; #FFE0B2` 这种把裸 hex 颜色直接放在 `;` 之后的活动着色写法，现在要求 `:foo;<<#FFE0B2>>`。服务端命中废弃语法时**不会报错中断**，而是在图顶部追加一个警告块，每条废弃用法占一行 `This syntax is deprecated, you must add <<#…>>…`——LLM 在生成多色 step 配色（如 Material 橙色渐变）时反复踩这个坑。
+
+- `render-plantuml.mjs` 新增 `sanitizeDeprecatedColors()`：发请求前扫源码，把 `;<空白>#hex` 末尾结构自动改写成 `;<<#hex>>`，并在 stderr 报告 `[plantuml] auto-fixed N deprecated color directive(s): #FFE0B2, ...`
+- 保存到本地的 `.puml` 文件也是修复后的版本，方便用户复用
+- SKILL.md 4.1 节加上着色铁律说明，把 sanitizer 标注为兜底安全网
+- 新增 3 个测试：废弃语法被改写 / 已正确 `<<#hex>>` 不被双重包裹 / 颜色前置写法 `#FFE0B2:文字;` 不被误伤
+
+partition / 分区着色暂不在 sanitizer 覆盖范围，文档已注明需手写 `partition "名称" <<#FFE0B2>> { … }`。
+
 ## [0.4.0] - 2026-05-27
 
 ### 破坏性变更：移除 Mermaid 引擎
