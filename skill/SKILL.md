@@ -145,7 +145,9 @@ stop
 > - 颜色前置：`#FFE0B2:文字;`
 > - 颜色后置+尖括号：`:文字;<<#FFE0B2>>`
 >
-> **禁止**把裸 `#颜色` 放在 `;` 之后（如 `:文字; #FFE0B2`）。这种旧语法已被 plantuml.com 废弃，服务端不会报错中断，而是会把**整张图每个节点的文字都替换成 “This syntax is deprecated, you must add <<#…>>…” 警告句**，导致图能画出但文字全废。partition / 分区同理：用 `partition "名称" <<#FFE0B2>> { … }`，不要用裸 `#FFE0B2`。拿不准时**直接不上色**最稳妥。
+> **不要**把裸 `#颜色` 放在 `;` 之后（如 `:文字; #FFE0B2`）。这种旧语法已被 plantuml.com 废弃，服务端不会报错中断，而是会在**图的顶部追加一个警告块**，里面每条废弃用法占一行 `This syntax is deprecated, you must add <<#…>>…`——图本体能画出来，但顶部多一坨警告很难看。
+>
+> 为了兜底 LLM 偶尔写错，`render-plantuml.mjs` 内置了 sanitizer：检测到 `;<空格>#hex` 末尾结构会自动改写成 `;<<#hex>>` 再发给服务端，并在 stderr 打印 `[plantuml] auto-fixed N deprecated color directive(s)`。这是安全网，不要依赖它——首选还是直接写对。partition / 分区目前 sanitizer 不覆盖：要给分区上色请直接写 `partition "名称" <<#FFE0B2>> { … }`。拿不准时**直接不上色**最稳妥。
 
 解析返回值中的 `path` 字段后，向用户回复：
 

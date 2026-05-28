@@ -49,6 +49,23 @@ async function loadSource(args) {
   throw new Error('必须指定 --input <file> / --inline "<source>" / --stdin')
 }
 
+// 防护：plantuml.com 已废弃 `;` 之后直接跟裸 `#hex` 颜色的活动着色写法
+// （例：`:foo; #FFE0B2`），现在要求 `;<<#FFE0B2>>`。如果不修复，服务端不会报错
+// 中断，而是在图顶部追加一个 "This syntax is deprecated, you must add <<#…>>…"
+// 的警告块，每处废弃用法占一行——LLM 容易在生成配色渐变时反复踩这个坑，所以
+// 在这里统一兜底自动改写。返回新源码 + 修复列表（供 stderr 报告）。
+function sanitizeDeprecatedColors(source) {
+  const fixes = []
+  const fixed = source.replace(
+    /;[ \t]*(#[0-9A-Fa-f]{3,8})(?=[ \t]*(?:\r?\n|$))/g,
+    (_match, hex) => {
+      fixes.push(hex)
+      return `;<<${hex}>>`
+    },
+  )
+  return { source: fixed, fixes }
+}
+
 // 把不带 @startuml/@enduml 的源码补全（PlantUML 服务端要求）
 function ensureUmlWrappers(source) {
   const trimmed = source.trim()
@@ -88,7 +105,14 @@ async function main() {
   if (!Number.isFinite(dpi) || dpi < 50 || dpi > 600) {
     throw new Error(`--dpi 需要 50-600 之间的整数，收到：${args.dpi}`)
   }
-  const wrapped = ensureUmlWrappers(rawSource)
+  // 先消除已知的废弃语法，再补 @startuml 包装、注入 dpi
+  const sanitized = sanitizeDeprecatedColors(rawSource)
+  if (sanitized.fixes.length > 0) {
+    process.stderr.write(
+      `[plantuml] auto-fixed ${sanitized.fixes.length} deprecated color directive(s): ${sanitized.fixes.join(', ')}\n`,
+    )
+  }
+  const wrapped = ensureUmlWrappers(sanitized.source)
   const source = format === 'svg' ? wrapped : injectDpi(wrapped, dpi)
 
   // ~h<HEX> 是 PlantUML 服务端官方支持的明文 hex 编码

@@ -208,6 +208,90 @@ describe('render-plantuml.mjs', () => {
     }
   })
 
+  it('sanitizer：把废弃的 `:foo; #FFE0B2` 自动改写成 `:foo;<<#FFE0B2>>`，并在 stderr 报告', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const inline = [
+          '@startuml',
+          'start',
+          ':Step 1; #FFE0B2',
+          ':Step 2; #FFCC80',
+          ':Step 3;#FFB74D', // 无空格也要识别
+          'stop',
+          '@enduml'
+        ].join('\n')
+        const { exitCode, lastJsonLine, stderr } = await runScript(SCRIPT, [
+          '--inline', inline,
+          '--output-dir', dir
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0, `stderr=${stderr}`)
+        const pngReq = mock.requests.find((r) => r.url && r.url.startsWith('/png/~h'))
+        const decoded = decodeHexFromPath(pngReq.url)
+        // 三处废弃写法都被改成新语法
+        assert.match(decoded, /:Step 1;<<#FFE0B2>>/)
+        assert.match(decoded, /:Step 2;<<#FFCC80>>/)
+        assert.match(decoded, /:Step 3;<<#FFB74D>>/)
+        // 不能再残留裸 `; #hex` 写法
+        assert.doesNotMatch(decoded, /;\s*#[0-9A-Fa-f]{3,8}(?=\s|$)/m)
+        // stderr 报告修复了 3 处
+        assert.match(stderr, /auto-fixed 3 deprecated color directive/i)
+        // 保存的 .puml 也应是修复后的版本，方便用户复用
+        const srcText = await readFile(lastJsonLine.sourcePath, 'utf8')
+        assert.match(srcText, /:Step 1;<<#FFE0B2>>/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('sanitizer：已经写对的 `;<<#hex>>` 不被二次改写', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const inline = '@startuml\nstart\n:Good;<<#FFE0B2>>\nstop\n@enduml'
+        const { exitCode, stderr } = await runScript(SCRIPT, [
+          '--inline', inline,
+          '--output-dir', dir
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const pngReq = mock.requests.find((r) => r.url && r.url.startsWith('/png/~h'))
+        const decoded = decodeHexFromPath(pngReq.url)
+        // 不能出现 <<<<#... 或其他双包裹
+        assert.doesNotMatch(decoded, /<<<</)
+        assert.match(decoded, /:Good;<<#FFE0B2>>/)
+        // 没改东西就不该有 auto-fixed 报告
+        assert.doesNotMatch(stderr, /auto-fixed/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
+  it('sanitizer：颜色前置写法 `#FFE0B2:文字;` 不被误伤', async () => {
+    const mock = await startPlantumlMock()
+    try {
+      await withTempDir(async (dir) => {
+        const inline = '@startuml\nstart\n#FFE0B2:已配色;\nstop\n@enduml'
+        const { exitCode, stderr } = await runScript(SCRIPT, [
+          '--inline', inline,
+          '--output-dir', dir
+        ], { env: { PLANTUML_SERVER_URL: mock.url } })
+
+        assert.equal(exitCode, 0)
+        const pngReq = mock.requests.find((r) => r.url && r.url.startsWith('/png/~h'))
+        const decoded = decodeHexFromPath(pngReq.url)
+        // 原样保留，不能被改成 `;<<#...>>`
+        assert.match(decoded, /#FFE0B2:已配色;/)
+        assert.doesNotMatch(stderr, /auto-fixed/)
+      })
+    } finally {
+      await mock.close()
+    }
+  })
+
   it('支持 --format svg', async () => {
     const mock = await startPlantumlMock()
     try {
